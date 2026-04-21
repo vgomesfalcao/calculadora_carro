@@ -933,7 +933,7 @@
     <div class="horizon-content">
       <label>Comparar a evolução do patrimônio em</label>
       <div class="horizon-input">
-        <input type="number" id="horizonte" value="60" min="1" max="240">
+        <input type="number" id="horizonte" value="60" min="1" max="240" step="1" data-integer="true">
         <span class="unit">meses</span>
       </div>
       <div class="quick-picks">
@@ -1189,7 +1189,7 @@
   let aporteRefCarId = null; // ID do carro novo usado como referência para calcular o aporte
 
   function syncQuickPicks() {
-    const horizonte = Math.round(readNumericValue($('horizonte')) || 0);
+    const horizonte = readIntegerValue($('horizonte')) || 0;
     document.querySelectorAll('.quick-pick').forEach(btn => {
       btn.classList.toggle('active', parseInt(btn.dataset.h) === horizonte);
     });
@@ -1247,7 +1247,22 @@
     return parseLocaleNumber(raw);
   }
 
+  function isIntegerInput(input) {
+    return input?.dataset?.integer === 'true';
+  }
+
+  function readIntegerValue(inputOrValue) {
+    return Math.round(readNumericValue(inputOrValue) || 0);
+  }
+
+  function readInputValue(inputOrValue) {
+    return typeof inputOrValue === 'object' && inputOrValue !== null && isIntegerInput(inputOrValue)
+      ? readIntegerValue(inputOrValue)
+      : readNumericValue(inputOrValue);
+  }
+
   function inferInputDecimals(input) {
+    if (isIntegerInput(input)) return 0;
     const step = input?.getAttribute?.('step');
     if (!step || step === 'any') return 2;
     if (!step.includes('.')) return 0;
@@ -1272,7 +1287,8 @@
       input.value = formatInputValue(0, inferInputDecimals(input));
       return;
     }
-    input.value = formatInputValue(readNumericValue(raw), inferInputDecimals(input));
+    const value = isIntegerInput(input) ? readIntegerValue(raw) : readNumericValue(raw);
+    input.value = formatInputValue(value, inferInputDecimals(input));
   }
 
   function normalizeNumericInputs(root = document) {
@@ -1848,7 +1864,7 @@
           car.seguroAnual = monthlyToAnnualLinear(readNumericValue(e.target));
           if (seguroAnoInput) seguroAnoInput.value = formatInputValue(car.seguroAnual, 2);
         } else {
-          car[field] = readNumericValue(e.target);
+          car[field] = readInputValue(e.target);
         }
         recalcular();
       });
@@ -2002,7 +2018,7 @@
           car.revisao = monthlyToAnnualLinear(readNumericValue(e.target));
           if (revisaoAnoInput) revisaoAnoInput.value = formatInputValue(car.revisao, 2);
         } else {
-          car[field] = readNumericValue(e.target);
+          car[field] = readInputValue(e.target);
         }
         recalcular();
       });
@@ -2048,7 +2064,7 @@
       <div class="field">
         <label>Prazo</label>
         <div class="input-wrap">
-          <input type="number" data-field="prazo" value="${fin.prazo}" min="1" step="1">
+          <input type="number" data-field="prazo" value="${fin.prazo}" min="1" step="1" data-integer="true">
           <span class="suffix">meses</span>
         </div>
       </div>
@@ -2099,7 +2115,7 @@
       inp.addEventListener('input', e => {
         const field = e.target.dataset.field;
         if (field === 'name') fin[field] = e.target.value;
-        else fin[field] = readNumericValue(e.target);
+        else fin[field] = readInputValue(e.target);
         recalcular();
       });
     });
@@ -2151,7 +2167,7 @@
 
   // ============ RECÁLCULO ============
   function recalcular() {
-    const H = Math.max(1, Math.round(readNumericValue($('horizonte')) || 60));
+    const H = Math.max(1, readIntegerValue($('horizonte')) || 60);
     const globals = {
       capitalInicial: readNumericValue($('capital_inicial')) || 0,
       rendMes: (readNumericValue($('rendimento_mes')) || 0) / 100,
