@@ -1363,19 +1363,29 @@
     return (lo + hi) / 2;
   }
 
+  function taxaSacParaPrimeiraParcela(pv, n, parcelaDesejada) {
+    if (pv <= 0 || parcelaDesejada <= 0 || n <= 0) return 0;
+    return Math.max(0, (parcelaDesejada - (pv / n)) / pv);
+  }
+
   // Resolve qual taxa efetiva usar para um financiamento:
   // - Se parcelaReal > 0: usa essa parcela como âncora, calcula a taxa que a gera
   // - Caso contrário: taxa nominal + margem CET padrão (10%) — aplica na taxa para gerar parcela ~10% maior
   // Retorna { taxaEfetiva, parcelaReferencia, fonte: 'manual'|'auto'|'nominal' }
-  function resolverTaxaEfetiva(pv, jurosNominalMes, prazo, parcelaReal) {
+  function resolverTaxaEfetiva(pv, jurosNominalMes, prazo, parcelaReal, amortType = 'price') {
     if (parcelaReal && parcelaReal > 0 && pv > 0) {
-      const taxa = taxaEfetivaParaParcela(pv, prazo, parcelaReal);
+      const taxa = amortType === 'sac'
+        ? taxaSacParaPrimeiraParcela(pv, prazo, parcelaReal)
+        : taxaEfetivaParaParcela(pv, prazo, parcelaReal);
       return { taxaEfetiva: taxa, parcelaReferencia: parcelaReal, fonte: 'manual' };
     }
-    // Auto: taxa nominal + 10% de margem sobre a parcela (reflete CET médio)
-    const parcelaPura = calcPrice(pv, jurosNominalMes, prazo);
+    const parcelaPura = amortType === 'sac'
+      ? (pv / prazo) + (pv * jurosNominalMes)
+      : calcPrice(pv, jurosNominalMes, prazo);
     const parcelaComCet = parcelaPura * (1 + CET_PADRAO);
-    const taxaEfetiva = taxaEfetivaParaParcela(pv, prazo, parcelaComCet);
+    const taxaEfetiva = amortType === 'sac'
+      ? taxaSacParaPrimeiraParcela(pv, prazo, parcelaComCet)
+      : taxaEfetivaParaParcela(pv, prazo, parcelaComCet);
     return { taxaEfetiva, parcelaReferencia: parcelaComCet, fonte: 'auto' };
   }
 
@@ -1842,7 +1852,7 @@
 
   function simularFinanciamento(pv, i, n, amortType, extra, extraMode, monthlyBudget = 0) {
     const result = [];
-    if (pv <= 0) return { meses: [], prazoEfetivo: 0, totalPago: 0, totalJuros: 0, parcelaMedia: 0, primeiraParcela: 0, ultimaParcela: 0, extraMedio: 0, primeiraExtra: 0, ultimaExtra: 0 };
+    if (pv <= 0) return { meses: [], prazoEfetivo: 0, totalPago: 0, totalJuros: 0, parcelaMedia: 0, parcelaBaseMedia: 0, primeiraParcelaBase: 0, ultimaParcelaBase: 0, primeiraParcela: 0, ultimaParcela: 0, extraMedio: 0, primeiraExtra: 0, ultimaExtra: 0 };
 
     let saldo = pv;
     let parcelaPrice = calcPrice(pv, i, n);
@@ -1850,6 +1860,7 @@
     let totalPago = 0;
     let totalJuros = 0;
     let totalExtra = 0;
+    let totalParcelaBase = 0;
     let mes = 0;
     const maxMeses = n + 2;
 
@@ -1880,6 +1891,7 @@
       totalPago += totalMes;
       totalJuros += juros;
       totalExtra += extraReal;
+      totalParcelaBase += parcelaBase;
 
       result.push({ mes, parcelaBase, juros, amortBase, extra: extraReal, total: totalMes, saldoFinal: saldo });
 
@@ -1900,6 +1912,9 @@
       totalPago,
       totalJuros,
       parcelaMedia: result.length > 0 ? totalPago / result.length : 0,
+      parcelaBaseMedia: result.length > 0 ? totalParcelaBase / result.length : 0,
+      primeiraParcelaBase: result[0]?.parcelaBase || 0,
+      ultimaParcelaBase: result[result.length - 1]?.parcelaBase || 0,
       primeiraParcela: result[0]?.total || 0,
       ultimaParcela: result[result.length - 1]?.total || 0,
       extraMedio: result.length > 0 ? totalExtra / result.length : 0,
@@ -2009,7 +2024,7 @@
     const caixaInicial = globals.capitalInicial + (vendaAntigo || 0) - carro.entrada;
     const financiado = Math.max(0, carro.valor - carro.entrada);
     const jurosM = financing.juros / 100;
-    const { taxaEfetiva } = resolverTaxaEfetiva(financiado, jurosM, financing.prazo, financing.parcelaReal);
+    const { taxaEfetiva } = resolverTaxaEfetiva(financiado, jurosM, financing.prazo, financing.parcelaReal, financing.amortType);
 
     const simFin = simularFinanciamento(financiado, taxaEfetiva, financing.prazo, financing.amortType, financing.extraAmort, financing.extraMode, globals.aporteMensal || 0);
 
@@ -2650,7 +2665,7 @@
       // Atualizar métricas de CADA financiamento do carro
       car.financings.forEach(fin => {
         const financiado = Math.max(0, car.valor - car.entrada);
-        const resolved = resolverTaxaEfetiva(financiado, fin.juros / 100, fin.prazo, fin.parcelaReal);
+        const resolved = resolverTaxaEfetiva(financiado, fin.juros / 100, fin.prazo, fin.parcelaReal, fin.amortType);
         const taxaEf = resolved.taxaEfetiva;
         const simF = simularFinanciamento(financiado, taxaEf, fin.prazo, fin.amortType, fin.extraAmort, fin.extraMode, globals.aporteMensal);
         const simFSem = simularFinanciamento(financiado, taxaEf, fin.prazo, fin.amortType, 0, fin.extraMode);
@@ -2664,14 +2679,15 @@
           if (extraOutEl && globals.aporteMensal > 0) {
             extraOutEl.value = formatInputValue(simF.primeiraExtra, 2);
           }
-          const parcelaLabel = fin.amortType === 'price' ? 'Parcela' : 'Parc. média';
+          const parcelaLabel = fin.amortType === 'price' ? 'Parcela base' : '1a parcela';
+          const parcelaDestaque = simF.primeiraParcelaBase;
           const fonteTag = resolved.fonte === 'manual'
             ? `<span style="background:#c99a2a; color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:2px; letter-spacing:0.08em;">MANUAL</span>`
             : `<span style="background:var(--ink-mute); color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:2px; letter-spacing:0.08em;" title="Calculada com margem CET de ${(CET_PADRAO*100).toFixed(0)}% sobre juros nominais">AUTO +${(CET_PADRAO*100).toFixed(0)}%</span>`;
           metricsEl.innerHTML = `
             <div class="metric">
               <div class="metric-label">${parcelaLabel} ${fonteTag}</div>
-              <div class="metric-value highlight">${fmtBRL(simF.parcelaMedia)}</div>
+              <div class="metric-value highlight">${fmtBRL(parcelaDestaque)}</div>
             </div>
             <div class="metric">
               <div class="metric-label">Prazo ef.</div>
@@ -2686,7 +2702,7 @@
               <div class="metric-value">${fmtBRL(simF.totalJuros)}</div>
             </div>
             <div class="metric" style="grid-column:1/-1; padding-top:6px; border-top:1px dashed var(--line); font-size:0.7rem; color:var(--ink-mute);">
-              Taxa efetiva (CET): ${(taxaEf * 100).toFixed(2)}% a.m.${resolved.fonte === 'auto' ? ` <em>(${fin.juros}% nominal + margem)</em>` : ''}
+              Taxa efetiva (CET): ${(taxaEf * 100).toFixed(2)}% a.m.${resolved.fonte === 'auto' ? ` <em>(${fin.juros}% nominal + margem)</em>` : ''}${fin.amortType === 'sac' ? ` · última parcela ${fmtBRL(simF.ultimaParcelaBase)}` : ''}
             </div>
             ${(globals.aporteMensal > 0 || fin.extraAmort > 0) ? `
               <div class="metric" style="grid-column:1/-1; padding-top:6px; border-top:1px dashed var(--line);">
@@ -2709,7 +2725,9 @@
           dashArray: '',
           historico: result.historico,
           finalPatrimonio: result.historico[result.historico.length - 1].patrimonio,
-          detail: `${activeFin.amortType === 'price' ? 'Price' : 'SAC'} · ${fmtBRL(result.simFin.parcelaMedia)}/mês`,
+          detail: activeFin.amortType === 'price'
+            ? `Price · parcela ${fmtBRL(result.simFin.primeiraParcelaBase)}/mês`
+            : `SAC · 1a ${fmtBRL(result.simFin.primeiraParcelaBase)} · última ${fmtBRL(result.simFin.ultimaParcelaBase)}`,
           finName: activeFin.name
         });
       }
