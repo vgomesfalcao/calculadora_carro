@@ -828,6 +828,59 @@
     gap: 8px 12px;
   }
 
+  .fin-total-compare {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 2px;
+  }
+
+  .fin-total-card {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,241,232,0.9));
+  }
+
+  .fin-total-card.primary {
+    border-color: color-mix(in srgb, var(--car-color) 48%, var(--line));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--car-color) 10%, white), rgba(255,255,255,0.96));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--car-color) 18%, transparent);
+  }
+
+  .fin-total-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 5px;
+  }
+
+  .fin-total-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .fin-total-card.primary .fin-total-value {
+    color: var(--car-color);
+  }
+
+  .fin-total-meta {
+    margin-top: 4px;
+    font-size: 0.72rem;
+    color: var(--ink-mute);
+  }
+
+  @media (max-width: 640px) {
+    .fin-total-compare {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .metric { display: flex; flex-direction: column; }
 
   .metric-label {
@@ -2671,6 +2724,8 @@
         const simFSem = simularFinanciamento(financiado, taxaEf, fin.prazo, fin.amortType, 0, fin.extraMode);
         const economiaJuros = simFSem.totalJuros - simF.totalJuros;
         const mesesEconomizados = simFSem.prazoEfetivo - simF.prazoEfetivo;
+        const custoFinalComAmort = car.entrada + simF.totalPago;
+        const custoFinalSemAmort = car.entrada + simFSem.totalPago;
 
         const finCard = document.querySelector(`.car-card[data-id="${car.id}"] .fin-card[data-id="${fin.id}"]`);
         if (finCard) {
@@ -2685,6 +2740,18 @@
             ? `<span style="background:#c99a2a; color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:2px; letter-spacing:0.08em;">MANUAL</span>`
             : `<span style="background:var(--ink-mute); color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:2px; letter-spacing:0.08em;" title="Calculada com margem CET de ${(CET_PADRAO*100).toFixed(0)}% sobre juros nominais">AUTO +${(CET_PADRAO*100).toFixed(0)}%</span>`;
           metricsEl.innerHTML = `
+            <div class="fin-total-compare">
+              <div class="fin-total-card primary">
+                <div class="fin-total-title">Custo final com amortização</div>
+                <div class="fin-total-value">${fmtBRL(custoFinalComAmort)}</div>
+                <div class="fin-total-meta">Juros e custos: ${fmtBRL(simF.totalJuros)}</div>
+              </div>
+              <div class="fin-total-card">
+                <div class="fin-total-title">Custo final sem amortização</div>
+                <div class="fin-total-value">${fmtBRL(custoFinalSemAmort)}</div>
+                <div class="fin-total-meta">Juros e custos: ${fmtBRL(simFSem.totalJuros)}</div>
+              </div>
+            </div>
             <div class="metric">
               <div class="metric-label">${parcelaLabel} ${fonteTag}</div>
               <div class="metric-value highlight">${fmtBRL(parcelaDestaque)}</div>
@@ -2698,7 +2765,7 @@
               <div class="metric-value">${fmtBRL(simF.totalPago)}</div>
             </div>
             <div class="metric">
-              <div class="metric-label">Juros + custos</div>
+              <div class="metric-label">Juros + custos com amort.</div>
               <div class="metric-value">${fmtBRL(simF.totalJuros)}</div>
             </div>
             <div class="metric" style="grid-column:1/-1; padding-top:6px; border-top:1px dashed var(--line); font-size:0.7rem; color:var(--ink-mute);">
