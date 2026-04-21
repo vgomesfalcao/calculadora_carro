@@ -427,8 +427,26 @@
   /* GLOBAL PREMISSES */
   .globals-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 16px 28px;
+  }
+
+  .globals-grid .field {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .globals-grid .input-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .globals-grid input[type="number"],
+  .globals-grid input.numeric-input {
+    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .globals-grid .field.paired-field {
@@ -572,6 +590,15 @@
     flex-direction: column;
     gap: 4px;
     min-width: 0;
+  }
+
+  .scenario-card-meta {
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.74rem;
+    color: var(--accent-old);
+    letter-spacing: 0.02em;
+    line-height: 1.45;
   }
 
   .scenario-card-title {
@@ -1189,6 +1216,16 @@
           <input type="number" id="combustivel_preco" value="6.20" min="0" step="0.10">
         </div>
       </div>
+
+      <div class="field">
+        <label>Aporte mensal disponível
+          <small>Valor fixo que você consegue destinar por mês para financiar ou poupar para compra à vista</small>
+        </label>
+        <div class="input-wrap">
+          <span class="prefix">R$</span>
+          <input type="number" id="aporte_mensal" value="2500" min="0" step="0.01">
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1218,13 +1255,13 @@
     <div id="cars_container"></div>
   </div>
 
-  <!-- APORTE DE REFERÊNCIA -->
+  <!-- RESUMO DO APORTE -->
   <div class="card" style="border-top:3px solid #c99a2a;">
     <div class="card-header">
       <div>
-        <div class="card-title">Aporte mensal em renda fixa</div>
+        <div class="card-title">Uso do aporte mensal</div>
         <div style="font-size:0.82rem; color:var(--ink-mute); margin-top:4px;">
-          Se você <strong>não</strong> comprar um carro novo, o dinheiro que iria para ele (menos o custo do antigo) vai para investimento. Escolha o carro novo que serve de referência para esse cálculo.
+          O mesmo valor mensal pode ser usado para investir enquanto mantém o antigo ou para acelerar a quitação no cenário financiado.
         </div>
       </div>
       <div class="card-subtitle">Bloco 4</div>
@@ -1232,17 +1269,8 @@
 
     <div class="globals-grid">
       <div class="field">
-        <label>Carro novo de referência
-          <small>O aporte = gastos dele − gastos do antigo</small>
-        </label>
-        <div class="input-wrap" style="padding:0;">
-          <select id="aporte_ref_car" style="font-family:'JetBrains Mono', monospace; font-size:0.88rem; padding:8px 10px; background:transparent; border:none; width:100%; cursor:pointer;"></select>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Aporte mensal calculado
-          <small>Com piso em zero</small>
+        <label>Aporte mensal configurado
+          <small>Mesmo valor aplicado a todos os cenários</small>
         </label>
         <div class="input-wrap">
           <span class="computed-value" id="aporte_valor_out" style="color:#c99a2a; font-size:1.1rem; padding:6px 10px;">—</span>
@@ -1261,7 +1289,7 @@
       <div>
         <div class="card-title">Evolução do patrimônio</div>
         <div style="font-size:0.82rem; color:var(--ink-mute); margin-top:4px;">
-          Caixa em renda fixa + valor residual do carro. No cenário "manter antigo", o dinheiro economizado vs o novo de referência vira aporte mensal investido.
+          Caixa em renda fixa + valor residual do carro. No cenário de manter o antigo, o aporte mensal configurado entra como investimento recorrente.
         </div>
       </div>
       <div class="card-subtitle">Gráfico</div>
@@ -1285,13 +1313,13 @@
   <footer>
     <strong>Metodologia do patrimônio:</strong>
     Todos os cenários partem do mesmo <strong>capital inicial</strong>. Quando você compra um carro novo, o valor da <strong>venda do antigo</strong> entra como caixa e a <strong>entrada do financiamento</strong> sai imediatamente.
-    <strong>Aporte mensal no cenário "manter antigo":</strong> a cada mês, o dinheiro que <em>iria</em> para o carro novo de referência (parcela + operacional) menos os gastos do antigo é aportado no investimento (piso em zero).
+    <strong>Aporte mensal:</strong> é um valor fixo definido nas premissas globais. No cenário "manter antigo", esse valor é aportado mensalmente no investimento. No cenário financiado, ele serve como teto mensal disponível para parcela + amortização extra.
     A cada mês: <strong>(1)</strong> o caixa aplicado rende à taxa de renda fixa configurada, <strong>(2)</strong> aporte mensal é somado ao caixa (se positivo), <strong>(3)</strong> as despesas do mês são debitadas. Se o caixa ficar negativo, vira dívida (não rende juros).
     <strong>Patrimônio = caixa investido + valor atual do carro.</strong>
     Depreciação do novo: curva 20%/15%/10% a.a. Antigo: linear 5% a.a. com piso de 50% do valor de venda.
     <strong>Price</strong>: parcela fixa. <strong>SAC</strong>: amortização constante, parcela decrescente.
     <strong>CET (Custo Efetivo Total)</strong>: por padrão, a calculadora adiciona <strong>10%</strong> sobre a parcela Price pura para refletir IOF, tarifas e seguros embutidos típicos do Brasil. Se você tem a proposta do banco em mãos, digite a <strong>parcela real</strong> no campo dedicado — a taxa efetiva é recalculada para bater exatamente com o valor do banco.
-    <strong>Amortização extra</strong>: "reduz prazo" paga saldo mantendo parcela; "reduz parcela" recalcula parcela sobre saldo menor.
+    <strong>Amortização extra</strong>: quando houver aporte mensal disponível, a calculadora transforma a sobra entre aporte e parcela em amortização extra. Em "reduz prazo", ela quita antes mantendo parcela; em "reduz parcela", recalcula a parcela sobre saldo menor.
     Simulador de apoio à decisão — não substitui análise profissional.
   </footer>
 
@@ -1570,6 +1598,7 @@
       rendimentoMes: readNumericValue($('rendimento_mes')) || 0,
       kmMes: readNumericValue($('km_mes')) || 0,
       combustivelPreco: readNumericValue($('combustivel_preco')) || 0,
+      aporteMensal: readNumericValue($('aporte_mensal')) || 0,
     };
   }
 
@@ -1579,6 +1608,7 @@
     setPairedInputs($('rendimento_mes'), $('rendimento_ano'), globals.rendimentoMes ?? 0.80, 2, 2, monthlyPercentToAnnual);
     setPairedInputs($('km_mes'), $('km_ano'), globals.kmMes ?? 1500, 0, 0, monthlyToAnnualLinear);
     if ($('combustivel_preco')) $('combustivel_preco').value = formatInputValue(globals.combustivelPreco ?? 6.20, inferInputDecimals($('combustivel_preco')));
+    if ($('aporte_mensal')) $('aporte_mensal').value = formatInputValue(globals.aporteMensal ?? 2500, inferInputDecimals($('aporte_mensal')));
     syncQuickPicks();
   }
 
@@ -1810,15 +1840,16 @@
     return pv * (i * f) / (f - 1);
   }
 
-  function simularFinanciamento(pv, i, n, amortType, extra, extraMode) {
+  function simularFinanciamento(pv, i, n, amortType, extra, extraMode, monthlyBudget = 0) {
     const result = [];
-    if (pv <= 0) return { meses: [], prazoEfetivo: 0, totalPago: 0, totalJuros: 0, parcelaMedia: 0, primeiraParcela: 0, ultimaParcela: 0 };
+    if (pv <= 0) return { meses: [], prazoEfetivo: 0, totalPago: 0, totalJuros: 0, parcelaMedia: 0, primeiraParcela: 0, ultimaParcela: 0, extraMedio: 0, primeiraExtra: 0, ultimaExtra: 0 };
 
     let saldo = pv;
     let parcelaPrice = calcPrice(pv, i, n);
     let amortSAC = pv / n;
     let totalPago = 0;
     let totalJuros = 0;
+    let totalExtra = 0;
     let mes = 0;
     const maxMeses = n + 2;
 
@@ -1838,19 +1869,23 @@
       if (amortBase > saldo) amortBase = saldo;
       parcelaBase = amortBase + juros;
 
-      const extraReal = Math.min(extra, Math.max(0, saldo - amortBase));
+      const extraDesejado = monthlyBudget > 0
+        ? Math.max(0, monthlyBudget - parcelaBase)
+        : extra;
+      const extraReal = Math.min(extraDesejado, Math.max(0, saldo - amortBase));
       const totalMes = parcelaBase + extraReal;
       saldo -= (amortBase + extraReal);
       if (saldo < 0) saldo = 0;
 
       totalPago += totalMes;
       totalJuros += juros;
+      totalExtra += extraReal;
 
       result.push({ mes, parcelaBase, juros, amortBase, extra: extraReal, total: totalMes, saldoFinal: saldo });
 
       if (saldo <= 0.01) break;
 
-      if (extraMode === 'parcela' && extra > 0) {
+      if (extraMode === 'parcela' && extraReal > 0) {
         const mesesRestantes = n - mes;
         if (mesesRestantes > 0) {
           if (amortType === 'price') parcelaPrice = calcPrice(saldo, i, mesesRestantes);
@@ -1866,7 +1901,10 @@
       totalJuros,
       parcelaMedia: result.length > 0 ? totalPago / result.length : 0,
       primeiraParcela: result[0]?.total || 0,
-      ultimaParcela: result[result.length - 1]?.total || 0
+      ultimaParcela: result[result.length - 1]?.total || 0,
+      extraMedio: result.length > 0 ? totalExtra / result.length : 0,
+      primeiraExtra: result[0]?.extra || 0,
+      ultimaExtra: result[result.length - 1]?.extra || 0
     };
   }
 
@@ -1893,6 +1931,46 @@
     const taxaAnual = 0.05;
     const fatorMes = Math.pow(1 - taxaAnual, mes / 12);
     return Math.max(valorVendaAtual * 0.5, valorVendaAtual * fatorMes);
+  }
+
+  function calcularPrazoCompraVista(valorAlvo, capitalInicial, aporteMensal, rendimentoMensal) {
+    const objetivo = Math.max(0, valorAlvo || 0);
+    let saldo = Math.max(0, capitalInicial || 0);
+    const aporte = Math.max(0, aporteMensal || 0);
+    const rend = Math.max(0, rendimentoMensal || 0);
+
+    if (saldo >= objetivo) {
+      return { meses: 0, saldoFinal: saldo, atingiu: true };
+    }
+
+    if (objetivo <= 0) {
+      return { meses: 0, saldoFinal: saldo, atingiu: true };
+    }
+
+    if (saldo === 0 && aporte === 0) {
+      return { meses: null, saldoFinal: saldo, atingiu: false };
+    }
+
+    const LIMITE_MESES = 1200;
+    for (let mes = 1; mes <= LIMITE_MESES; mes++) {
+      if (saldo > 0) saldo *= (1 + rend);
+      saldo += aporte;
+      if (saldo >= objetivo) {
+        return { meses: mes, saldoFinal: saldo, atingiu: true };
+      }
+    }
+
+    return { meses: null, saldoFinal: saldo, atingiu: false };
+  }
+
+  function formatarPrazoMeses(meses) {
+    if (meses === 0) return 'disponivel agora';
+    if (!Number.isFinite(meses) || meses === null) return 'prazo indeterminado';
+    if (meses < 12) return `${meses} meses`;
+    const anos = Math.floor(meses / 12);
+    const mesesRestantes = meses % 12;
+    if (mesesRestantes === 0) return `${anos} ano${anos > 1 ? 's' : ''}`;
+    return `${anos}a ${mesesRestantes}m`;
   }
 
   // ============ SIMULAÇÃO PATRIMÔNIO ============
@@ -1933,7 +2011,7 @@
     const jurosM = financing.juros / 100;
     const { taxaEfetiva } = resolverTaxaEfetiva(financiado, jurosM, financing.prazo, financing.parcelaReal);
 
-    const simFin = simularFinanciamento(financiado, taxaEfetiva, financing.prazo, financing.amortType, financing.extraAmort, financing.extraMode);
+    const simFin = simularFinanciamento(financiado, taxaEfetiva, financing.prazo, financing.amortType, financing.extraAmort, financing.extraMode, globals.aporteMensal || 0);
 
     const parcelaPorMes = new Array(horizonte + 1).fill(0);
     for (const m of simFin.meses) {
@@ -2252,6 +2330,7 @@
             <div class="scenario-card-copy">
               <div class="scenario-card-title">Compra à vista</div>
               <div class="scenario-card-subtitle">Simula pagar o valor total do carro agora e incluir esse cenário na comparação.</div>
+              <div class="scenario-card-meta" data-out="cash-buy-time">Calculando prazo para compra à vista...</div>
             </div>
             <label class="field-boolean">
               <input type="checkbox" data-field="showCashPurchaseInChart" ${car.showCashPurchaseInChart ? 'checked' : ''}>
@@ -2361,6 +2440,7 @@
   function renderFinancing(car, fin) {
     const isActive = fin.id === car.activeFinancingId;
     const isEnabled = car.showActiveFinancingInChart;
+    const aporteMensalGlobal = readNumericValue($('aporte_mensal')) || 0;
     const card = document.createElement('div');
     card.className = 'fin-card' + (isActive && isEnabled ? ' active' : '') + (!isEnabled ? ' disabled' : '');
     card.dataset.id = fin.id;
@@ -2402,10 +2482,12 @@
       </div>
 
       <div class="field">
-        <label>Amort. extra</label>
+        <label>${aporteMensalGlobal > 0 ? 'Amort. extra calculada' : 'Amort. extra'}
+          <small>${aporteMensalGlobal > 0 ? 'Calculada pela sobra entre o aporte mensal global e a parcela do mês.' : 'Valor fixo adicional pago todo mês.'}</small>
+        </label>
         <div class="input-wrap">
           <span class="prefix">R$</span>
-          <input type="number" data-field="extraAmort" value="${fin.extraAmort}" min="0" step="0.01">
+          <input type="number" data-field="extraAmort" value="${fin.extraAmort}" min="0" step="0.01" data-out="extra-amort" ${aporteMensalGlobal > 0 ? 'disabled' : ''}>
         </div>
       </div>
 
@@ -2490,16 +2572,8 @@
       rendMes: (readNumericValue($('rendimento_mes')) || 0) / 100,
       kmMes: readNumericValue($('km_mes')) || 0,
       precoComb: readNumericValue($('combustivel_preco')) || 0,
+      aporteMensal: readNumericValue($('aporte_mensal')) || 0,
     };
-
-    // Atualizar dropdown de referência do aporte
-    atualizarDropdownAporte();
-
-    // Garantir que aporteRefCarId aponta para um carro existente
-    if (!cars.find(c => c.id === aporteRefCarId)) {
-      aporteRefCarId = cars[0]?.id || null;
-      if (aporteRefCarId) $('aporte_ref_car').value = aporteRefCarId;
-    }
 
     // ==== CALCULAR DESPESAS DO CARRO ANTIGO (para saber o aporte) ====
     // Usamos o MELHOR antigo, mas ainda não sabemos qual é — vamos decidir depois.
@@ -2519,55 +2593,31 @@
       }
     });
 
-    // ==== CALCULAR APORTE MENSAL (baseado no carro novo de referência) ====
-    const refCar = cars.find(c => c.id === aporteRefCarId) || cars[0];
-    let aportePorMes = new Array(H + 1).fill(0);
-    let aporteMedioStr = '—';
-    let aporteExplain = 'Adicione um carro novo para calcular o aporte.';
+    cars.forEach(car => {
+      const card = document.querySelector(`.car-card[data-id="${car.id}"]`);
+      const cashTimeEl = card?.querySelector('[data-out="cash-buy-time"]');
+      if (!cashTimeEl) return;
 
-    if (refCar && oldCarBaseData.length > 0) {
-      // Gastos mensais do carro novo de referência (parcela + operacional)
-      const refActiveFin = refCar.financings.find(f => f.id === refCar.activeFinancingId) || refCar.financings[0];
-      const refFinanciado = Math.max(0, refCar.valor - refCar.entrada);
-      const { taxaEfetiva: refTaxaEf } = resolverTaxaEfetiva(refFinanciado, refActiveFin.juros / 100, refActiveFin.prazo, refActiveFin.parcelaReal);
-      const refSim = simularFinanciamento(refFinanciado, refTaxaEf, refActiveFin.prazo, refActiveFin.amortType, refActiveFin.extraAmort, refActiveFin.extraMode);
-      const refParcelaPorMes = new Array(H + 1).fill(0);
-      for (const m of refSim.meses) {
-        if (m.mes <= H) refParcelaPorMes[m.mes] = m.total;
+      const prazoVista = calcularPrazoCompraVista(
+        car.valor,
+        globals.capitalInicial,
+        globals.aporteMensal,
+        globals.rendMes
+      );
+
+      if (prazoVista.atingiu) {
+        cashTimeEl.textContent = `Compra estimada em ${formatarPrazoMeses(prazoVista.meses)} com saldo de ${fmtBRL2(prazoVista.saldoFinal)}.`;
+      } else {
+        cashTimeEl.textContent = 'Com os parâmetros atuais, o valor do carro não é atingido em prazo razoável.';
       }
-      const refCombMes = (globals.kmMes / (refCar.consumo || 1)) * globals.precoComb;
-      const refIpvaMes = (refCar.valor * (refCar.ipvaPerc / 100)) / 12;
-      const refSeguroMes = (refCar.valor * (refCar.seguroPerc / 100)) / 12;
-      const refCuidadoMes = refCar.revisao / 12;
-      const refOperacionalMes = refCombMes + refIpvaMes + refSeguroMes + refCuidadoMes;
+    });
 
-      // Despesas do MELHOR antigo — vamos usar a média dos antigos por simplicidade.
-      // Na prática, quando o melhor antigo for escolhido depois, a diferença é pequena entre antigos.
-      // Estratégia: usar o custo do antigo com menor custo (mais conservador pro aporte).
-      const menorCustoAntigo = Math.min(...oldCarBaseData.map(d => d.custoMensal));
-
-      let somaAportes = 0;
-      let mesesComAporte = 0;
-      for (let m = 1; m <= H; m++) {
-        const gastosNovo = (refParcelaPorMes[m] || 0) + refOperacionalMes;
-        const gastosAntigo = menorCustoAntigo;
-        const aporte = Math.max(0, gastosNovo - gastosAntigo);
-        aportePorMes[m] = aporte;
-        if (aporte > 0) {
-          somaAportes += aporte;
-          mesesComAporte++;
-        }
-      }
-
-      const aporteMedio = mesesComAporte > 0 ? somaAportes / mesesComAporte : 0;
-      aporteMedioStr = fmtBRL2(aporteMedio);
-
-      // Mensagem explicativa
-      const prazoFin = refSim.prazoEfetivo;
-      const parcelaMed = refSim.parcelaMedia;
-      const gastosAntigoStr = fmtBRL2(menorCustoAntigo);
-      aporteExplain = `Enquanto o financiamento do <strong>${escapeHTML(refCar.name)}</strong> estiver ativo (primeiros ${prazoFin} meses), o aporte médio será de <strong>${fmtBRL2(aporteMedio)}/mês</strong> — a diferença entre os gastos desse carro novo (parcela ${fmtBRL(parcelaMed)} + operacional ${fmtBRL(refOperacionalMes)}) e o antigo mais barato (${gastosAntigoStr}). Depois que o financiamento quita, resta só a diferença operacional.`;
-    }
+    const aportePorMes = new Array(H + 1).fill(globals.aporteMensal);
+    aportePorMes[0] = 0;
+    const aporteMedioStr = fmtBRL2(globals.aporteMensal);
+    const aporteExplain = globals.aporteMensal > 0
+      ? `Você informou <strong>${fmtBRL2(globals.aporteMensal)}/mês</strong> como capacidade fixa de aporte. Ao manter o carro antigo, esse valor é investido mensalmente. Nos financiamentos, a sobra entre esse aporte e a parcela do mês vira amortização extra.`
+      : 'Defina um aporte mensal nas premissas globais para investir ao manter o antigo e acelerar a quitação nos financiamentos.';
 
     $('aporte_valor_out').textContent = aporteMedioStr;
     $('aporte_explain').innerHTML = aporteExplain;
@@ -2602,7 +2652,7 @@
         const financiado = Math.max(0, car.valor - car.entrada);
         const resolved = resolverTaxaEfetiva(financiado, fin.juros / 100, fin.prazo, fin.parcelaReal);
         const taxaEf = resolved.taxaEfetiva;
-        const simF = simularFinanciamento(financiado, taxaEf, fin.prazo, fin.amortType, fin.extraAmort, fin.extraMode);
+        const simF = simularFinanciamento(financiado, taxaEf, fin.prazo, fin.amortType, fin.extraAmort, fin.extraMode, globals.aporteMensal);
         const simFSem = simularFinanciamento(financiado, taxaEf, fin.prazo, fin.amortType, 0, fin.extraMode);
         const economiaJuros = simFSem.totalJuros - simF.totalJuros;
         const mesesEconomizados = simFSem.prazoEfetivo - simF.prazoEfetivo;
@@ -2610,6 +2660,10 @@
         const finCard = document.querySelector(`.car-card[data-id="${car.id}"] .fin-card[data-id="${fin.id}"]`);
         if (finCard) {
           const metricsEl = finCard.querySelector('[data-metrics]');
+          const extraOutEl = finCard.querySelector('[data-out="extra-amort"]');
+          if (extraOutEl && globals.aporteMensal > 0) {
+            extraOutEl.value = formatInputValue(simF.primeiraExtra, 2);
+          }
           const parcelaLabel = fin.amortType === 'price' ? 'Parcela' : 'Parc. média';
           const fonteTag = resolved.fonte === 'manual'
             ? `<span style="background:#c99a2a; color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:2px; letter-spacing:0.08em;">MANUAL</span>`
@@ -2634,11 +2688,11 @@
             <div class="metric" style="grid-column:1/-1; padding-top:6px; border-top:1px dashed var(--line); font-size:0.7rem; color:var(--ink-mute);">
               Taxa efetiva (CET): ${(taxaEf * 100).toFixed(2)}% a.m.${resolved.fonte === 'auto' ? ` <em>(${fin.juros}% nominal + margem)</em>` : ''}
             </div>
-            ${fin.extraAmort > 0 ? `
+            ${(globals.aporteMensal > 0 || fin.extraAmort > 0) ? `
               <div class="metric" style="grid-column:1/-1; padding-top:6px; border-top:1px dashed var(--line);">
                 <div class="metric-label">Amort. extra poupa</div>
                 <div class="metric-value" style="color:#2d5f4a; font-size:0.75rem;">
-                  ${fmtBRL(economiaJuros)}${mesesEconomizados > 0 ? ` · ${mesesEconomizados}m antes` : ''}
+                  ${fmtBRL(economiaJuros)}${mesesEconomizados > 0 ? ` · ${mesesEconomizados}m antes` : ''}${globals.aporteMensal > 0 ? ` · extra inicial ${fmtBRL2(simF.primeiraExtra)}` : ''}
                 </div>
               </div>
             ` : ''}
@@ -2690,29 +2744,6 @@
     renderChart(globals, H, histAntigo, chartScenarioResults, bestOld);
     renderLegendAndRanking(globals, H, histAntigo, chartScenarioResults, bestOld);
     saveState();
-  }
-
-  // Atualiza o <select> de carro de referência para o aporte
-  function atualizarDropdownAporte() {
-    const sel = $('aporte_ref_car');
-    if (!sel) return;
-
-    // Preservar valor atual se ainda existir
-    const prevValue = aporteRefCarId || sel.value;
-
-    sel.innerHTML = cars.map(c =>
-      `<option value="${c.id}">${escapeHTML(c.name)}</option>`
-    ).join('') || '<option value="">(nenhum carro novo)</option>';
-
-    if (cars.find(c => c.id === prevValue)) {
-      sel.value = prevValue;
-      aporteRefCarId = prevValue;
-    } else if (cars.length > 0) {
-      sel.value = cars[0].id;
-      aporteRefCarId = cars[0].id;
-    } else {
-      aporteRefCarId = null;
-    }
   }
 
   // ============ GRÁFICO ============
@@ -2948,6 +2979,8 @@
   ['horizonte', 'capital_inicial', 'combustivel_preco']
     .forEach(id => $(id).addEventListener('input', recalcular));
 
+  $('aporte_mensal').addEventListener('input', renderAll);
+
   bindLinkedInputs({
     monthlyInput: $('rendimento_mes'),
     annualInput: $('rendimento_ano'),
@@ -2967,11 +3000,6 @@
   });
 
   $('download_filled_html').addEventListener('click', downloadFilledHTML);
-
-  $('aporte_ref_car').addEventListener('change', e => {
-    aporteRefCarId = e.target.value;
-    recalcular();
-  });
 
   document.querySelectorAll('.quick-pick').forEach(btn => {
     btn.addEventListener('click', () => {
