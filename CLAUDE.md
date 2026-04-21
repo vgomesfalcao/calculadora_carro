@@ -46,3 +46,23 @@ Model invariants to preserve unless the user asks otherwise:
 - Any user-provided string inserted via `innerHTML` must go through `escapeHTML()` ([index.html:1458](index.html#L1458)).
 - Numeric inputs use Brazilian locale formatting via `parseLocaleNumber` / `formatNumericInput` / `normalizeNumericInputs`. Reach for `readNumericValue` / `readIntegerValue` rather than `parseFloat` on raw `.value`.
 - Prefer minimal edits that preserve the single-file architecture. Do not introduce frameworks, bundlers, npm, or split files unless explicitly requested.
+
+## Visual language (layout & styling)
+
+The app has a **shared visual language**. When fixing or adding UI, reuse existing classes first — don't invent section-specific width/margin overrides. The car-card fields ([index.html:2364-2462](index.html#L2364-L2462)) are the reference implementation; if a section looks "out of pattern," it's usually because it diverged from these primitives.
+
+Core building blocks:
+
+- **`.field`** — default row: `grid-template-columns: 1fr auto` (label left, input right, same row). Use for any single-input row.
+- **`.field.paired-field`** — for linked monthly/annual inputs: label left, a `.paired-inputs` grid of two `.paired-slot`s on the right (each with its own `.paired-slot-label` + `.input-wrap`). Used by "Rendimento renda fixa", "Rodagem", "Seguro", and the revisão/cuidado field.
+- **`.input-wrap`** — wraps every numeric input, optionally with `.prefix` (e.g., `R$`) and/or `.suffix` (e.g., `% a.m.`, `km/L`) in JetBrains Mono. Never put a bare `<input type="number">` outside an `.input-wrap`.
+- **`.section-label`** — small monospace header grouping fields within a card (e.g., "Veículo" / "Operacional" in car cards, "Caixa & despesas" / "Taxas & uso" in globals). Use one per column.
+- **Two-column body grid** — cards with many fields use a 2-column grid (`.car-body-grid`, `.globals-grid`) that collapses to 1 column below ~900-980px.
+
+Anti-patterns to avoid:
+
+- Don't set per-field `width: calc(...)` or `margin-left: auto` to reposition inputs. If the default `.field` row looks wrong, the fix is usually to use the correct `.field` / `.paired-field` / `.input-wrap` primitives, not to override widths.
+- Don't override `.field`'s `grid-template-columns` to stack label-on-top-of-input section-wide. If you need a different input column width, constrain it with `grid-template-columns: 1fr minmax(Xpx, Ypx)` — keep the label-left / input-right axis.
+- Dashed `border-bottom: 1px dashed var(--line)` between fields in a column is the standard rhythm separator (see globals `.field` and the `.section-label` dashed underline). Use `:last-child { border-bottom: none }` to avoid a trailing line.
+
+Responsive breakpoints in use: 1120px (tighten spacing), 980-900px (collapse 2-col to 1-col), 720px (collapse paired inputs), 560px (fallback for very narrow). Match these rather than introducing new ones.
