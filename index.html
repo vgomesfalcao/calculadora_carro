@@ -550,19 +550,154 @@
     border-top: 1px solid var(--line);
   }
 
+  .scenario-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .scenario-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(244,241,234,0.92));
+  }
+
+  .scenario-card-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .scenario-card-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .scenario-card-subtitle {
+    font-size: 0.78rem;
+    color: var(--ink-mute);
+    line-height: 1.45;
+  }
+
+  .scenario-card .field-boolean {
+    flex-shrink: 0;
+    align-items: center;
+    color: var(--ink-soft);
+  }
+
+  .scenario-card .field-boolean span {
+    white-space: nowrap;
+  }
+
+  .financings-panel {
+    margin-top: 14px;
+    padding: 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(251,249,244,0.98), rgba(243,239,231,0.94));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.65);
+  }
+
+  .financings-panel.disabled {
+    opacity: 0.72;
+  }
+
   .financings-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     margin-bottom: 14px;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .financings-header-main {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .financings-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    background: rgba(255,255,255,0.86);
+    width: 100%;
+  }
+
+  .financings-toggle-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .financings-heading-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 2px;
+  }
+
+  .financings-toggle-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .financings-toggle small {
+    font-size: 0.74rem;
+    color: var(--ink-mute);
   }
 
   .financings-header-title {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     letter-spacing: 0.15em;
-    color: var(--ink-soft);
+    color: var(--ink);
     text-transform: uppercase;
+  }
+
+  .financings-header-subtitle {
+    font-size: 0.8rem;
+    color: var(--ink-mute);
+  }
+
+  @media (max-width: 720px) {
+    .scenario-controls {
+      grid-template-columns: 1fr;
+    }
+
+    .scenario-card {
+      flex-direction: column;
+    }
+
+    .scenario-card .field-boolean span {
+      white-space: normal;
+    }
+
+    .financings-header-main {
+      flex-direction: column;
+    }
+
+    .financings-toggle {
+      min-width: 100%;
+    }
   }
 
   .financings-grid {
@@ -585,6 +720,24 @@
     opacity: 1;
     background: #fff;
     box-shadow: 0 0 0 2px var(--car-color), 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .fin-card.disabled {
+    opacity: 0.38;
+    background: #f0ede6;
+    box-shadow: none;
+    border-left-color: var(--line-strong);
+    filter: grayscale(0.18);
+  }
+
+  .fin-card.disabled .fin-select-btn {
+    background: var(--line-strong);
+    color: var(--ink-soft);
+  }
+
+  .fin-card button:disabled,
+  .fin-card input:disabled {
+    cursor: not-allowed;
   }
 
   .fin-card-header {
@@ -1619,6 +1772,8 @@
       color,
       ano: ANO_ATUAL,
       emGarantia: true,
+      showActiveFinancingInChart: true,
+      showCashPurchaseInChart: false,
       valor: 90000,
       entrada: 30000,
       ipvaPerc: 4,
@@ -1637,6 +1792,13 @@
     }
     if (typeof car.emGarantia !== 'boolean') {
       car.emGarantia = !isCarroUsado(car);
+    }
+    if (typeof car.showActiveFinancingInChart !== 'boolean') {
+      const activeFin = car.financings.find(fin => fin.id === car.activeFinancingId) || car.financings[0];
+      car.showActiveFinancingInChart = activeFin ? activeFin.showInChart !== false : true;
+    }
+    if (typeof car.showCashPurchaseInChart !== 'boolean') {
+      car.showCashPurchaseInChart = false;
     }
     return car;
   }
@@ -1805,6 +1967,33 @@
       historico.push({ mes: m, caixa, patrimonio: caixa + valorCarro, gastoAcum });
     }
     return { historico, simFin };
+  }
+
+  function simularPatrimonioCarroVista(globals, carro, horizonte, vendaAntigo) {
+    const caixaInicial = globals.capitalInicial + (vendaAntigo || 0) - carro.valor;
+    const combMes = (globals.kmMes / carro.consumo) * globals.precoComb;
+    const ipvaMes = (carro.valor * (carro.ipvaPerc / 100)) / 12;
+    const seguroMes = (carro.valor * (carro.seguroPerc / 100)) / 12;
+    const cuidadoMes = carro.revisao / 12;
+    const operacionalMes = combMes + ipvaMes + seguroMes + cuidadoMes;
+
+    const rend = globals.rendMes;
+    const historico = [];
+
+    let caixa = caixaInicial;
+    let valorCarro = carro.valor;
+    historico.push({ mes: 0, caixa, patrimonio: caixa + valorCarro, gastoAcum: carro.valor });
+
+    let gastoAcum = carro.valor;
+    for (let m = 1; m <= horizonte; m++) {
+      if (caixa > 0) caixa = caixa * (1 + rend);
+      caixa -= operacionalMes;
+      gastoAcum += operacionalMes;
+      valorCarro = valorCarroNoMes(carro.valor, m);
+      historico.push({ mes: m, caixa, patrimonio: caixa + valorCarro, gastoAcum });
+    }
+
+    return { historico };
   }
 
   // ============ UI: OLD CAR CARD ============
@@ -2057,12 +2246,43 @@
         </div>
       </div>
 
-      <div class="financings-wrap">
+      <div class="financings-wrap" data-financings-wrap>
+        <div class="scenario-controls">
+          <div class="scenario-card">
+            <div class="scenario-card-copy">
+              <div class="scenario-card-title">Compra à vista</div>
+              <div class="scenario-card-subtitle">Simula pagar o valor total do carro agora e incluir esse cenário na comparação.</div>
+            </div>
+            <label class="field-boolean">
+              <input type="checkbox" data-field="showCashPurchaseInChart" ${car.showCashPurchaseInChart ? 'checked' : ''}>
+              <span>Mostrar no gráfico</span>
+            </label>
+          </div>
+
+          <div class="scenario-card">
+            <div class="scenario-card-copy">
+              <div class="scenario-card-title">Modo financiado</div>
+              <div class="scenario-card-subtitle">Liga ou desliga toda a seção de financiamentos e a presença do financiamento ativo no gráfico.</div>
+            </div>
+            <label class="field-boolean">
+              <input type="checkbox" data-field="showActiveFinancingInChart" ${car.showActiveFinancingInChart ? 'checked' : ''}>
+              <span>Usar financiamentos</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="financings-panel ${car.showActiveFinancingInChart ? '' : 'disabled'}" data-financings-panel>
         <div class="financings-header">
-          <div class="financings-header-title">Financiamentos — clique para ativar</div>
-          <button class="add-btn small" data-action="add-financing">+ Financiamento</button>
+          <div class="financings-header-main">
+            <div class="financings-heading-copy">
+              <div class="financings-header-title">Seção de financiamentos</div>
+              <div class="financings-header-subtitle">Escolha abaixo qual banco fica ativo para este carro quando o modo financiado estiver em uso.</div>
+            </div>
+          </div>
+          <button class="add-btn small" data-action="add-financing" ${car.showActiveFinancingInChart ? '' : 'disabled'}>+ Financiamento</button>
         </div>
         <div class="financings-grid" data-financings-container></div>
+        </div>
       </div>
     `;
 
@@ -2082,6 +2302,12 @@
           if (field === 'color') {
             card.style.setProperty('--car-color', car.color);
           }
+        } else if (field === 'showActiveFinancingInChart') {
+          car.showActiveFinancingInChart = e.target.checked;
+          renderAll();
+          return;
+        } else if (field === 'showCashPurchaseInChart') {
+          car.showCashPurchaseInChart = e.target.checked;
         } else if (field === 'emGarantia') {
           car.emGarantia = e.target.checked;
           updateCarCuidadoCopy(card, car);
@@ -2134,8 +2360,9 @@
 
   function renderFinancing(car, fin) {
     const isActive = fin.id === car.activeFinancingId;
+    const isEnabled = car.showActiveFinancingInChart;
     const card = document.createElement('div');
-    card.className = 'fin-card' + (isActive ? ' active' : '');
+    card.className = 'fin-card' + (isActive && isEnabled ? ' active' : '') + (!isEnabled ? ' disabled' : '');
     card.dataset.id = fin.id;
 
     card.innerHTML = `
@@ -2190,14 +2417,21 @@
       <div class="fin-metrics" data-metrics></div>
 
       <button class="fin-select-btn" data-action="select-fin">
-        ${isActive ? '✓ Ativo' : 'Ativar'}
+        ${!isEnabled ? 'Financiamento desativado' : isActive ? '✓ Ativo' : 'Ativar'}
       </button>
     `;
+
+    if (!isEnabled) {
+      card.querySelectorAll('input, button').forEach(el => {
+        el.disabled = true;
+      });
+    }
 
     card.querySelectorAll('input[data-field]').forEach(inp => {
       inp.addEventListener('input', e => {
         const field = e.target.dataset.field;
         if (field === 'name') fin[field] = e.target.value;
+        else if (e.target.type === 'checkbox') fin[field] = e.target.checked;
         else fin[field] = readInputValue(e.target);
         recalcular();
       });
@@ -2361,6 +2595,7 @@
     const carResults = cars.map(car => {
       const activeFin = car.financings.find(f => f.id === car.activeFinancingId) || car.financings[0];
       const result = simularPatrimonioCarroNovo(globals, car, activeFin, H, vendaAntigoParaNovo);
+      const chartScenarios = [];
 
       // Atualizar métricas de CADA financiamento do carro
       car.financings.forEach(fin => {
@@ -2409,20 +2644,51 @@
             ` : ''}
           `;
         }
+
       });
+
+      if (car.showActiveFinancingInChart && activeFin) {
+        chartScenarios.push({
+          type: 'financing',
+          name: `${car.name} · ${activeFin.name}`,
+          color: car.color,
+          dashArray: '',
+          historico: result.historico,
+          finalPatrimonio: result.historico[result.historico.length - 1].patrimonio,
+          detail: `${activeFin.amortType === 'price' ? 'Price' : 'SAC'} · ${fmtBRL(result.simFin.parcelaMedia)}/mês`,
+          finName: activeFin.name
+        });
+      }
+
+      if (car.showCashPurchaseInChart) {
+        const vistaResult = simularPatrimonioCarroVista(globals, car, H, vendaAntigoParaNovo);
+        chartScenarios.push({
+          type: 'cash',
+          name: `${car.name} · À vista`,
+          color: car.color,
+          dashArray: '3 4',
+          historico: vistaResult.historico,
+          finalPatrimonio: vistaResult.historico[vistaResult.historico.length - 1].patrimonio,
+          detail: `Compra à vista · ${fmtBRL(car.valor)}`,
+          finName: 'À vista'
+        });
+      }
 
       return {
         car,
         activeFin,
         historico: result.historico,
         finalPatrimonio: result.historico[result.historico.length - 1].patrimonio,
-        simFin: result.simFin
+        simFin: result.simFin,
+        chartScenarios
       };
     });
 
+    const chartScenarioResults = carResults.flatMap(result => result.chartScenarios);
+
     // Renderizar gráfico
-    renderChart(globals, H, histAntigo, carResults, bestOld);
-    renderLegendAndRanking(globals, H, histAntigo, carResults, bestOld);
+    renderChart(globals, H, histAntigo, chartScenarioResults, bestOld);
+    renderLegendAndRanking(globals, H, histAntigo, chartScenarioResults, bestOld);
     saveState();
   }
 
@@ -2452,7 +2718,7 @@
   // ============ GRÁFICO ============
   let chartData = null; // cache para tooltip
 
-  function renderChart(globals, H, histAntigo, carResults, bestOld) {
+  function renderChart(globals, H, histAntigo, scenarioResults, bestOld) {
     const svg = $('chart_svg');
     const W = 900, Ht = 500;
     const padL = 70, padR = 20, padT = 20, padB = 50;
@@ -2464,13 +2730,14 @@
     // Calcular escalas
     const allSeries = [
       { name: antigoLabel, color: ANTIGO_COLOR, data: histAntigo, isAntigo: true },
-      ...carResults.map(r => ({
-        name: r.car.name,
-        color: r.car.color,
+      ...scenarioResults.map(r => ({
+        name: r.name,
+        color: r.color,
+        dashArray: r.dashArray,
         data: r.historico,
         isAntigo: false,
-        car: r.car,
-        activeFin: r.activeFin
+        detail: r.detail,
+        type: r.type
       }))
     ];
 
@@ -2515,7 +2782,7 @@
     // Linhas dos cenários
     allSeries.forEach((s, idx) => {
       const points = s.data.map(d => `${xScale(d.mes)},${yScale(d.patrimonio)}`).join(' ');
-      html += `<polyline class="chart-line" points="${points}" stroke="${s.color}" data-series="${idx}"/>`;
+      html += `<polyline class="chart-line" points="${points}" stroke="${s.color}" stroke-dasharray="${s.dashArray || ''}" data-series="${idx}"/>`;
 
       // Último ponto destacado
       const last = s.data[s.data.length - 1];
@@ -2590,7 +2857,7 @@
     });
   }
 
-  function renderLegendAndRanking(globals, H, histAntigo, carResults, bestOld) {
+  function renderLegendAndRanking(globals, H, histAntigo, scenarioResults, bestOld) {
     const antigoLabel = bestOld ? `Manter ${bestOld.oldCar.name}` : 'Manter antigo';
     const antigoExtra = bestOld && oldCars.length > 1
       ? `melhor entre ${oldCars.length} antigos`
@@ -2600,15 +2867,16 @@
     const legendEl = $('chart_legend');
     const items = [
       { name: antigoLabel, color: ANTIGO_COLOR, extra: antigoExtra },
-      ...carResults.map(r => ({
-        name: r.car.name,
-        color: r.car.color,
-        extra: r.activeFin?.name || ''
+      ...scenarioResults.map(r => ({
+        name: r.name,
+        color: r.color,
+        extra: r.detail || '',
+        dashArray: r.dashArray || ''
       }))
     ];
     legendEl.innerHTML = items.map(it => `
       <div class="legend-item">
-        <span class="legend-line" style="background:${it.color}"></span>
+        <span class="legend-line" style="background:${it.color}; ${it.dashArray ? `mask-image: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 16px); -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 10px, transparent 10px 16px);` : ''}"></span>
         <span><strong>${escapeHTML(it.name)}</strong> ${it.extra ? `<span style="color:var(--ink-mute);">· ${escapeHTML(it.extra)}</span>` : ''}</span>
       </div>
     `).join('');
@@ -2617,11 +2885,11 @@
     const antigoFinal = histAntigo[histAntigo.length - 1].patrimonio;
     const ranking = [
       { name: antigoLabel, color: ANTIGO_COLOR, patrimonio: antigoFinal, detail: antigoExtra, isAntigo: true },
-      ...carResults.map(r => ({
-        name: r.car.name,
-        color: r.car.color,
-        patrimonio: r.historico[r.historico.length - 1].patrimonio,
-        detail: `${r.activeFin.name} · ${r.activeFin.amortType === 'price' ? 'Price' : 'SAC'} · ${fmtBRL(r.simFin.parcelaMedia)}/mês`,
+      ...scenarioResults.map(r => ({
+        name: r.name,
+        color: r.color,
+        patrimonio: r.finalPatrimonio,
+        detail: r.detail,
         isAntigo: false
       }))
     ].sort((a, b) => b.patrimonio - a.patrimonio);
