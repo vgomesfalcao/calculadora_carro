@@ -228,7 +228,8 @@
     width: 100%;
   }
 
-  .paired-inputs input[type="number"] {
+  .paired-inputs input[type="number"],
+  .paired-inputs input.numeric-input {
     width: 100%;
   }
 
@@ -313,9 +314,11 @@
   }
 
   .car-card input[type="number"]:focus,
+  .car-card input.numeric-input:focus,
   .car-card input[type="text"]:focus { border-color: var(--car-color, var(--accent-old)); }
 
   .fin-card input[type="number"]:focus,
+  .fin-card input.numeric-input:focus,
   .fin-card input[type="text"]:focus { border-color: var(--car-color, var(--accent-old)); }
 
   input[type="number"]::-webkit-outer-spin-button,
@@ -594,7 +597,8 @@
 
   .fin-card .field label { font-size: 0.82rem; }
   .fin-card .field { padding: 6px 0; }
-  .fin-card input[type="number"] { width: 80px; font-size: 0.82rem; padding: 6px 8px; }
+  .fin-card input[type="number"],
+  .fin-card input.numeric-input { width: 80px; font-size: 0.82rem; padding: 6px 8px; }
   .fin-card .input-wrap .prefix,
   .fin-card .input-wrap .suffix { font-size: 0.7rem; padding: 0 6px; }
 
@@ -961,7 +965,7 @@
         </label>
         <div class="input-wrap">
           <span class="prefix">R$</span>
-          <input type="number" id="capital_inicial" value="50000" min="0" step="1000">
+          <input type="number" id="capital_inicial" value="50000" min="0" step="0.01">
         </div>
       </div>
 
@@ -1185,7 +1189,7 @@
   let aporteRefCarId = null; // ID do carro novo usado como referência para calcular o aporte
 
   function syncQuickPicks() {
-    const horizonte = parseInt($('horizonte')?.value) || 0;
+    const horizonte = Math.round(readNumericValue($('horizonte')) || 0);
     document.querySelectorAll('.quick-pick').forEach(btn => {
       btn.classList.toggle('active', parseInt(btn.dataset.h) === horizonte);
     });
@@ -1204,8 +1208,89 @@
     return Math.round(value * factor) / factor;
   }
 
+  function parseLocaleNumber(raw) {
+    if (typeof raw === 'number') return Number.isFinite(raw) ? raw : 0;
+
+    const text = String(raw ?? '').trim();
+    if (!text) return 0;
+
+    const sanitized = text.replace(/\s+/g, '');
+
+    if (sanitized.includes(',') && sanitized.includes('.')) {
+      const normalized = sanitized.replace(/\./g, '').replace(',', '.');
+      return Number(normalized) || 0;
+    }
+
+    if (sanitized.includes(',')) {
+      return Number(sanitized.replace(/\./g, '').replace(',', '.')) || 0;
+    }
+
+    const dotCount = (sanitized.match(/\./g) || []).length;
+    if (dotCount > 1) {
+      return Number(sanitized.replace(/\./g, '')) || 0;
+    }
+
+    if (dotCount === 1) {
+      const [, fraction = ''] = sanitized.split('.');
+      if (fraction.length === 3) {
+        return Number(sanitized.replace('.', '')) || 0;
+      }
+    }
+
+    return Number(sanitized) || 0;
+  }
+
+  function readNumericValue(inputOrValue) {
+    const raw = typeof inputOrValue === 'object' && inputOrValue !== null && 'value' in inputOrValue
+      ? inputOrValue.value
+      : inputOrValue;
+    return parseLocaleNumber(raw);
+  }
+
+  function inferInputDecimals(input) {
+    const step = input?.getAttribute?.('step');
+    if (!step || step === 'any') return 2;
+    if (!step.includes('.')) return 0;
+    return step.split('.')[1].length;
+  }
+
   function formatInputValue(value, decimals = 2) {
-    return String(roundTo(value, decimals));
+    return roundTo(value, decimals).toLocaleString('pt-BR', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  }
+
+  function formatNumericInput(input) {
+    if (!input) return;
+    const raw = String(input.value ?? '').trim();
+    if (!raw) {
+      if (input.hasAttribute('placeholder')) {
+        input.value = '';
+        return;
+      }
+      input.value = formatInputValue(0, inferInputDecimals(input));
+      return;
+    }
+    input.value = formatInputValue(readNumericValue(raw), inferInputDecimals(input));
+  }
+
+  function normalizeNumericInputs(root = document) {
+    root.querySelectorAll('input[type="number"], input.numeric-input').forEach(input => {
+      if (input.type === 'color') return;
+
+      input.classList.add('numeric-input');
+      if (input.type === 'number') input.type = 'text';
+      input.inputMode = inferInputDecimals(input) > 0 ? 'decimal' : 'numeric';
+      input.autocomplete = 'off';
+
+      if (!input.dataset.numericFormatted) {
+        input.addEventListener('blur', () => formatNumericInput(input));
+        input.dataset.numericFormatted = 'true';
+      }
+
+      formatNumericInput(input);
+    });
   }
 
   function setPairedInputs(monthlyInput, annualInput, monthlyValue, monthlyDecimals = 2, annualDecimals = 2, monthlyToAnnual = v => v * 12) {
@@ -1236,44 +1321,41 @@
     annualInput,
     monthlyToAnnual,
     annualToMonthly,
-    onMonthlyChange,
     monthlyDecimals = 2,
     annualDecimals = 2,
   }) {
     if (!monthlyInput || !annualInput) return;
 
     monthlyInput.addEventListener('input', () => {
-      const monthlyValue = parseFloat(monthlyInput.value) || 0;
-      if (typeof onMonthlyChange === 'function') onMonthlyChange(monthlyValue);
-      setPairedInputs(monthlyInput, annualInput, monthlyValue, monthlyDecimals, annualDecimals, monthlyToAnnual);
+      const monthlyValue = readNumericValue(monthlyInput);
+      if (annualInput) annualInput.value = formatInputValue(monthlyToAnnual(monthlyValue), annualDecimals);
       recalcular();
     });
 
     annualInput.addEventListener('input', () => {
-      const annualValue = parseFloat(annualInput.value) || 0;
+      const annualValue = readNumericValue(annualInput);
       const monthlyValue = annualToMonthly(annualValue);
-      if (typeof onMonthlyChange === 'function') onMonthlyChange(monthlyValue);
-      setPairedInputs(monthlyInput, annualInput, monthlyValue, monthlyDecimals, annualDecimals, monthlyToAnnual);
+      if (monthlyInput) monthlyInput.value = formatInputValue(monthlyValue, monthlyDecimals);
       recalcular();
     });
   }
 
   function getGlobalsFromDOM() {
     return {
-      horizonte: Math.max(1, parseInt($('horizonte')?.value) || 60),
-      capitalInicial: parseFloat($('capital_inicial')?.value) || 0,
-      rendimentoMes: parseFloat($('rendimento_mes')?.value) || 0,
-      kmMes: parseFloat($('km_mes')?.value) || 0,
-      combustivelPreco: parseFloat($('combustivel_preco')?.value) || 0,
+      horizonte: Math.max(1, Math.round(readNumericValue($('horizonte')) || 60)),
+      capitalInicial: readNumericValue($('capital_inicial')) || 0,
+      rendimentoMes: readNumericValue($('rendimento_mes')) || 0,
+      kmMes: readNumericValue($('km_mes')) || 0,
+      combustivelPreco: readNumericValue($('combustivel_preco')) || 0,
     };
   }
 
   function applyGlobalsToDOM(globals = {}) {
-    if ($('horizonte')) $('horizonte').value = Math.max(1, parseInt(globals.horizonte) || 60);
-    if ($('capital_inicial')) $('capital_inicial').value = globals.capitalInicial ?? 50000;
+    if ($('horizonte')) $('horizonte').value = formatInputValue(Math.max(1, Math.round(globals.horizonte) || 60), 0);
+    if ($('capital_inicial')) $('capital_inicial').value = formatInputValue(globals.capitalInicial ?? 50000, inferInputDecimals($('capital_inicial')));
     setPairedInputs($('rendimento_mes'), $('rendimento_ano'), globals.rendimentoMes ?? 0.80, 2, 2, monthlyPercentToAnnual);
     setPairedInputs($('km_mes'), $('km_ano'), globals.kmMes ?? 1500, 0, 0, monthlyToAnnualLinear);
-    if ($('combustivel_preco')) $('combustivel_preco').value = globals.combustivelPreco ?? 6.20;
+    if ($('combustivel_preco')) $('combustivel_preco').value = formatInputValue(globals.combustivelPreco ?? 6.20, inferInputDecimals($('combustivel_preco')));
     syncQuickPicks();
   }
 
@@ -1677,14 +1759,14 @@
                 <span class="paired-slot-label">Mensal</span>
                 <div class="input-wrap">
                   <span class="prefix">R$</span>
-                  <input type="number" data-field="manutencao" value="${roundTo(car.manutencao, 2)}" min="0" step="10">
+                  <input type="number" data-field="manutencao" value="${roundTo(car.manutencao, 2)}" min="0" step="0.01">
                 </div>
               </div>
               <div class="paired-slot">
                 <span class="paired-slot-label">Anual</span>
                 <div class="input-wrap">
                   <span class="prefix">R$</span>
-                  <input type="number" data-derived-field="manutencaoAnual" value="${roundTo(monthlyToAnnualLinear(car.manutencao), 2)}" min="0" step="100">
+                  <input type="number" data-derived-field="manutencaoAnual" value="${roundTo(monthlyToAnnualLinear(car.manutencao), 2)}" min="0" step="0.01">
                 </div>
               </div>
             </div>
@@ -1702,7 +1784,7 @@
             </label>
             <div class="input-wrap">
               <span class="prefix">R$</span>
-              <input type="number" data-field="vendaAtual" value="${car.vendaAtual}" min="0" step="500">
+              <input type="number" data-field="vendaAtual" value="${car.vendaAtual}" min="0" step="0.01">
             </div>
           </div>
         </div>
@@ -1718,14 +1800,14 @@
                 <span class="paired-slot-label">Mensal</span>
                 <div class="input-wrap">
                   <span class="prefix">R$</span>
-                  <input type="number" data-derived-field="seguroMensal" value="${roundTo(annualToMonthlyLinear(car.seguroAnual), 2)}" min="0" step="10">
+                  <input type="number" data-derived-field="seguroMensal" value="${roundTo(annualToMonthlyLinear(car.seguroAnual), 2)}" min="0" step="0.01">
                 </div>
               </div>
               <div class="paired-slot">
                 <span class="paired-slot-label">Anual</span>
                 <div class="input-wrap">
                   <span class="prefix">R$</span>
-                  <input type="number" data-field="seguroAnual" value="${roundTo(car.seguroAnual, 2)}" min="0" step="50">
+                  <input type="number" data-field="seguroAnual" value="${roundTo(car.seguroAnual, 2)}" min="0" step="0.01">
                 </div>
               </div>
             </div>
@@ -1734,7 +1816,7 @@
             <label>Licenciamento anual</label>
             <div class="input-wrap">
               <span class="prefix">R$</span>
-              <input type="number" data-field="licenciamentoAnual" value="${car.licenciamentoAnual}" min="0" step="10">
+              <input type="number" data-field="licenciamentoAnual" value="${car.licenciamentoAnual}" min="0" step="0.01">
             </div>
           </div>
         </div>
@@ -1754,19 +1836,19 @@
         if (field === 'name') {
           car.name = e.target.value;
         } else if (field === 'manutencao') {
-          car.manutencao = parseFloat(e.target.value) || 0;
-          setPairedInputs(manutencaoMesInput, manutencaoAnoInput, car.manutencao, 2, 2, monthlyToAnnualLinear);
+          car.manutencao = readNumericValue(e.target);
+          if (manutencaoAnoInput) manutencaoAnoInput.value = formatInputValue(monthlyToAnnualLinear(car.manutencao), 2);
         } else if (derivedField === 'manutencaoAnual') {
-          car.manutencao = annualToMonthlyLinear(parseFloat(e.target.value) || 0);
-          setPairedInputs(manutencaoMesInput, manutencaoAnoInput, car.manutencao, 2, 2, monthlyToAnnualLinear);
+          car.manutencao = annualToMonthlyLinear(readNumericValue(e.target));
+          if (manutencaoMesInput) manutencaoMesInput.value = formatInputValue(car.manutencao, 2);
         } else if (field === 'seguroAnual') {
-          car.seguroAnual = parseFloat(e.target.value) || 0;
-          setPairedInputs(seguroMesInput, seguroAnoInput, annualToMonthlyLinear(car.seguroAnual), 2, 2, monthlyToAnnualLinear);
+          car.seguroAnual = readNumericValue(e.target);
+          if (seguroMesInput) seguroMesInput.value = formatInputValue(annualToMonthlyLinear(car.seguroAnual), 2);
         } else if (derivedField === 'seguroMensal') {
-          car.seguroAnual = monthlyToAnnualLinear(parseFloat(e.target.value) || 0);
-          setPairedInputs(seguroMesInput, seguroAnoInput, annualToMonthlyLinear(car.seguroAnual), 2, 2, monthlyToAnnualLinear);
+          car.seguroAnual = monthlyToAnnualLinear(readNumericValue(e.target));
+          if (seguroAnoInput) seguroAnoInput.value = formatInputValue(car.seguroAnual, 2);
         } else {
-          car[field] = parseFloat(e.target.value) || 0;
+          car[field] = readNumericValue(e.target);
         }
         recalcular();
       });
@@ -1805,7 +1887,7 @@
             <label>Valor do veículo</label>
             <div class="input-wrap">
               <span class="prefix">R$</span>
-              <input type="number" data-field="valor" value="${car.valor}" min="0" step="1000">
+              <input type="number" data-field="valor" value="${car.valor}" min="0" step="0.01">
             </div>
           </div>
           <div class="field">
@@ -1814,7 +1896,7 @@
             </label>
             <div class="input-wrap">
               <span class="prefix">R$</span>
-              <input type="number" data-field="entrada" value="${car.entrada}" min="0" step="1000">
+              <input type="number" data-field="entrada" value="${car.entrada}" min="0" step="0.01">
             </div>
           </div>
           <div class="field">
@@ -1867,14 +1949,14 @@
                 <span class="paired-slot-label">Mensal</span>
                 <div class="input-wrap">
                   <span class="prefix">R$</span>
-                  <input type="number" data-derived-field="revisaoMensal" value="${roundTo(annualToMonthlyLinear(car.revisao), 2)}" min="0" step="10">
+                  <input type="number" data-derived-field="revisaoMensal" value="${roundTo(annualToMonthlyLinear(car.revisao), 2)}" min="0" step="0.01">
                 </div>
               </div>
               <div class="paired-slot">
                 <span class="paired-slot-label">Anual</span>
                 <div class="input-wrap">
                   <span class="prefix">R$</span>
-                  <input type="number" data-field="revisao" value="${roundTo(car.revisao, 2)}" min="0" step="50">
+                  <input type="number" data-field="revisao" value="${roundTo(car.revisao, 2)}" min="0" step="0.01">
                 </div>
               </div>
             </div>
@@ -1908,19 +1990,19 @@
             card.style.setProperty('--car-color', car.color);
           }
         } else if (field === 'seguroPerc') {
-          car.seguroPerc = parseFloat(e.target.value) || 0;
-          setPairedInputs(seguroPercMesInput, seguroPercAnoInput, annualToMonthlyLinear(car.seguroPerc), 2, 2, monthlyToAnnualLinear);
+          car.seguroPerc = readNumericValue(e.target);
+          if (seguroPercMesInput) seguroPercMesInput.value = formatInputValue(annualToMonthlyLinear(car.seguroPerc), 2);
         } else if (derivedField === 'seguroPercMes') {
-          car.seguroPerc = monthlyToAnnualLinear(parseFloat(e.target.value) || 0);
-          setPairedInputs(seguroPercMesInput, seguroPercAnoInput, annualToMonthlyLinear(car.seguroPerc), 2, 2, monthlyToAnnualLinear);
+          car.seguroPerc = monthlyToAnnualLinear(readNumericValue(e.target));
+          if (seguroPercAnoInput) seguroPercAnoInput.value = formatInputValue(car.seguroPerc, 2);
         } else if (field === 'revisao') {
-          car.revisao = parseFloat(e.target.value) || 0;
-          setPairedInputs(revisaoMesInput, revisaoAnoInput, annualToMonthlyLinear(car.revisao), 2, 2, monthlyToAnnualLinear);
+          car.revisao = readNumericValue(e.target);
+          if (revisaoMesInput) revisaoMesInput.value = formatInputValue(annualToMonthlyLinear(car.revisao), 2);
         } else if (derivedField === 'revisaoMensal') {
-          car.revisao = monthlyToAnnualLinear(parseFloat(e.target.value) || 0);
-          setPairedInputs(revisaoMesInput, revisaoAnoInput, annualToMonthlyLinear(car.revisao), 2, 2, monthlyToAnnualLinear);
+          car.revisao = monthlyToAnnualLinear(readNumericValue(e.target));
+          if (revisaoAnoInput) revisaoAnoInput.value = formatInputValue(car.revisao, 2);
         } else {
-          car[field] = parseFloat(e.target.value) || 0;
+          car[field] = readNumericValue(e.target);
         }
         recalcular();
       });
@@ -1997,7 +2079,7 @@
         <label>Amort. extra</label>
         <div class="input-wrap">
           <span class="prefix">R$</span>
-          <input type="number" data-field="extraAmort" value="${fin.extraAmort}" min="0" step="50">
+          <input type="number" data-field="extraAmort" value="${fin.extraAmort}" min="0" step="0.01">
         </div>
       </div>
 
@@ -2017,7 +2099,7 @@
       inp.addEventListener('input', e => {
         const field = e.target.dataset.field;
         if (field === 'name') fin[field] = e.target.value;
-        else fin[field] = parseFloat(e.target.value) || 0;
+        else fin[field] = readNumericValue(e.target);
         recalcular();
       });
     });
@@ -2062,17 +2144,19 @@
     const container = $('cars_container');
     container.innerHTML = '';
     cars.forEach(car => container.appendChild(renderCar(car)));
+    normalizeNumericInputs(oldContainer);
+    normalizeNumericInputs(container);
     recalcular();
   }
 
   // ============ RECÁLCULO ============
   function recalcular() {
-    const H = Math.max(1, parseInt($('horizonte').value) || 60);
+    const H = Math.max(1, Math.round(readNumericValue($('horizonte')) || 60));
     const globals = {
-      capitalInicial: parseFloat($('capital_inicial').value) || 0,
-      rendMes: (parseFloat($('rendimento_mes').value) || 0) / 100,
-      kmMes: parseFloat($('km_mes').value) || 0,
-      precoComb: parseFloat($('combustivel_preco').value) || 0,
+      capitalInicial: readNumericValue($('capital_inicial')) || 0,
+      rendMes: (readNumericValue($('rendimento_mes')) || 0) / 100,
+      kmMes: readNumericValue($('km_mes')) || 0,
+      precoComb: readNumericValue($('combustivel_preco')) || 0,
     };
 
     // Atualizar dropdown de referência do aporte
@@ -2482,6 +2566,8 @@
     seedDefaultState();
   }
 
+  normalizeNumericInputs(document);
+
   $('add_old_car').addEventListener('click', () => {
     oldCars.push(createOldCar({}));
     renderAll();
@@ -2500,9 +2586,6 @@
     annualInput: $('rendimento_ano'),
     monthlyToAnnual: monthlyPercentToAnnual,
     annualToMonthly: annualPercentToMonthly,
-    onMonthlyChange: value => {
-      if ($('rendimento_mes')) $('rendimento_mes').value = formatInputValue(value, 2);
-    },
     monthlyDecimals: 2,
     annualDecimals: 2,
   });
@@ -2512,9 +2595,6 @@
     annualInput: $('km_ano'),
     monthlyToAnnual: monthlyToAnnualLinear,
     annualToMonthly: annualToMonthlyLinear,
-    onMonthlyChange: value => {
-      if ($('km_mes')) $('km_mes').value = formatInputValue(value, 0);
-    },
     monthlyDecimals: 0,
     annualDecimals: 0,
   });
@@ -2529,6 +2609,7 @@
   document.querySelectorAll('.quick-pick').forEach(btn => {
     btn.addEventListener('click', () => {
       $('horizonte').value = btn.dataset.h;
+      formatNumericInput($('horizonte'));
       syncQuickPicks();
       recalcular();
     });
