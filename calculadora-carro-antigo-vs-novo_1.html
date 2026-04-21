@@ -76,6 +76,47 @@
     line-height: 1.55;
   }
 
+  .header-tools {
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px dashed var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .header-tools-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .header-tools-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  .header-tools-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    color: var(--ink-soft);
+  }
+
+  .header-tools-status[data-state="error"] {
+    color: #c14545;
+  }
+
+  .header-tools-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
   .card {
     background: var(--bg-card);
     border: 1px solid var(--line);
@@ -231,7 +272,7 @@
 
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  input[type="number"] { -moz-appearance: textfield; }
+  input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
 
   .computed {
     display: flex;
@@ -577,6 +618,26 @@
   }
   .add-btn:hover { opacity: 0.85; }
 
+  .ghost-btn {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line-strong);
+    padding: 9px 16px;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .ghost-btn:hover {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
   .add-btn.small {
     padding: 6px 12px;
     font-size: 0.68rem;
@@ -783,6 +844,17 @@
       Compare múltiplos carros novos contra manter o antigo, considerando a evolução do seu patrimônio líquido ao longo do tempo.
       Cada carro pode ter vários cenários de financiamento. A "sobra" mensal rende no CDI.
     </p>
+
+    <div class="header-tools">
+      <div class="header-tools-meta">
+        <span class="header-tools-label">Rascunho local</span>
+        <strong class="header-tools-status" id="autosave_status">Mudanças serão salvas automaticamente neste navegador.</strong>
+      </div>
+
+      <div class="header-tools-actions">
+        <button class="ghost-btn" id="download_filled_html">Baixar HTML preenchido</button>
+      </div>
+    </div>
   </header>
 
   <!-- HORIZONTE -->
@@ -965,6 +1037,7 @@
 
 </div>
 
+<script id="embedded_state" type="application/json"></script>
 <script>
 (function() {
   const $ = id => document.getElementById(id);
@@ -982,6 +1055,8 @@
 
   const ANTIGO_COLOR = '#b8562a';
   const CET_PADRAO = 0.10; // 10% adicional sobre Price puro para refletir IOF + tarifas + seguros típicos
+  const STORAGE_KEY = 'calculadora-carro-state-v1';
+  const EMBEDDED_STATE_ID = 'embedded_state';
 
   // Dado uma parcela desejada (real do banco), resolve numericamente a taxa efetiva que a gera
   function taxaEfetivaParaParcela(pv, n, parcelaDesejada) {
@@ -1021,6 +1096,191 @@
   let oldCarCounter = 0;
   let finCounter = 0;
   let aporteRefCarId = null; // ID do carro novo usado como referência para calcular o aporte
+
+  function syncQuickPicks() {
+    const horizonte = parseInt($('horizonte')?.value) || 0;
+    document.querySelectorAll('.quick-pick').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.h) === horizonte);
+    });
+  }
+
+  function setAutosaveStatus(message, state = 'idle') {
+    const statusEl = $('autosave_status');
+    if (!statusEl) return;
+    statusEl.textContent = message;
+    statusEl.dataset.state = state;
+  }
+
+  function getGlobalsFromDOM() {
+    return {
+      horizonte: Math.max(1, parseInt($('horizonte')?.value) || 60),
+      capitalInicial: parseFloat($('capital_inicial')?.value) || 0,
+      rendimentoMes: parseFloat($('rendimento_mes')?.value) || 0,
+      kmMes: parseFloat($('km_mes')?.value) || 0,
+      combustivelPreco: parseFloat($('combustivel_preco')?.value) || 0,
+    };
+  }
+
+  function applyGlobalsToDOM(globals = {}) {
+    if ($('horizonte')) $('horizonte').value = Math.max(1, parseInt(globals.horizonte) || 60);
+    if ($('capital_inicial')) $('capital_inicial').value = globals.capitalInicial ?? 50000;
+    if ($('rendimento_mes')) $('rendimento_mes').value = globals.rendimentoMes ?? 0.80;
+    if ($('km_mes')) $('km_mes').value = globals.kmMes ?? 1500;
+    if ($('combustivel_preco')) $('combustivel_preco').value = globals.combustivelPreco ?? 6.20;
+    syncQuickPicks();
+  }
+
+  function buildSerializableState() {
+    return {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      globals: getGlobalsFromDOM(),
+      oldCars: JSON.parse(JSON.stringify(oldCars)),
+      cars: JSON.parse(JSON.stringify(cars)),
+      aporteRefCarId,
+    };
+  }
+
+  function parseStateCandidate(raw) {
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!parsed || typeof parsed !== 'object') return null;
+      if (!parsed.globals || typeof parsed.globals !== 'object') return null;
+      if (!Array.isArray(parsed.oldCars) || !Array.isArray(parsed.cars)) return null;
+      return {
+        version: parsed.version || 1,
+        savedAt: parsed.savedAt || new Date(0).toISOString(),
+        globals: parsed.globals,
+        oldCars: parsed.oldCars,
+        cars: parsed.cars,
+        aporteRefCarId: parsed.aporteRefCarId || null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function readEmbeddedState() {
+    const el = $(EMBEDDED_STATE_ID);
+    if (!el) return null;
+    const raw = el.textContent.trim();
+    if (!raw) return null;
+    return parseStateCandidate(raw);
+  }
+
+  function readLocalState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return parseStateCandidate(raw);
+    } catch {
+      setAutosaveStatus('Armazenamento local indisponível neste contexto.', 'error');
+      return null;
+    }
+  }
+
+  function latestTimestamp(state) {
+    const ts = Date.parse(state?.savedAt || '');
+    return Number.isFinite(ts) ? ts : 0;
+  }
+
+  function extractCounter(id, prefix) {
+    const match = typeof id === 'string' ? id.match(new RegExp(`^${prefix}_(\\d+)$`)) : null;
+    return match ? parseInt(match[1], 10) : 0;
+  }
+
+  function recalibrarCounters() {
+    carCounter = Math.max(0, ...cars.map(car => extractCounter(car.id, 'car')));
+    oldCarCounter = Math.max(0, ...oldCars.map(car => extractCounter(car.id, 'oldcar')));
+    finCounter = Math.max(0, ...cars.flatMap(car => car.financings.map(fin => extractCounter(fin.id, 'fin'))));
+  }
+
+  function restoreState(state) {
+    if (!state || !state.oldCars.length || !state.cars.length) return false;
+
+    applyGlobalsToDOM(state.globals);
+    oldCars = state.oldCars.map(oldCar => createOldCar(oldCar));
+    cars = state.cars.map(car => {
+      const financings = Array.isArray(car.financings) && car.financings.length
+        ? car.financings.map(fin => createFinancing(fin))
+        : [createFinancing({ name: 'Banco A', juros: 1.45, prazo: 48 })];
+      const restoredCar = createCar({ ...car, financings, activeFinancingId: car.activeFinancingId });
+      if (!restoredCar.financings.some(fin => fin.id === restoredCar.activeFinancingId)) {
+        restoredCar.activeFinancingId = restoredCar.financings[0]?.id || null;
+      }
+      return restoredCar;
+    });
+    aporteRefCarId = state.aporteRefCarId || null;
+    recalibrarCounters();
+    setAutosaveStatus('Rascunho local restaurado.', 'saved');
+    return true;
+  }
+
+  function loadState() {
+    const embeddedState = readEmbeddedState();
+    const localState = readLocalState();
+    const chosenState = [embeddedState, localState]
+      .filter(Boolean)
+      .sort((a, b) => latestTimestamp(a) - latestTimestamp(b))
+      .pop();
+
+    return chosenState ? restoreState(chosenState) : false;
+  }
+
+  function saveState() {
+    const state = buildSerializableState();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const time = new Date(state.savedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      setAutosaveStatus(`Salvo neste navegador às ${time}.`, 'saved');
+    } catch {
+      setAutosaveStatus('Armazenamento local indisponível neste contexto.', 'error');
+    }
+    return state;
+  }
+
+  function escapeJSONForScriptTag(json) {
+    return json.replace(/</g, '\\u003c');
+  }
+
+  function hideChartArtifacts() {
+    const tooltip = $('chart_tooltip');
+    if (tooltip) tooltip.classList.remove('show');
+    const hoverLine = $('chart_svg')?.querySelector('.hover-line');
+    if (hoverLine) hoverLine.remove();
+  }
+
+  function downloadFilledHTML() {
+    hideChartArtifacts();
+    const state = saveState();
+    const embeddedState = escapeJSONForScriptTag(JSON.stringify(state, null, 2));
+    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML.replace(
+      /<script id="embedded_state" type="application\/json">[\s\S]*?<\/script>/,
+      `<script id="embedded_state" type="application/json">\n${embeddedState}\n<\/script>`
+    );
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `calculadora-carro-preenchida-${stamp}.html`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setAutosaveStatus('HTML preenchido baixado com o estado atual.', 'saved');
+  }
+
+  function seedDefaultState() {
+    oldCars = [createOldCar({ name: 'Meu carro de 1993' })];
+    cars = [
+      createCar({ name: 'Honda HR-V', color: CAR_COLORS[0] }),
+      createCar({ name: 'Toyota Corolla', color: CAR_COLORS[1], valor: 120000, entrada: 40000 })
+    ];
+    aporteRefCarId = cars[0]?.id || null;
+    setAutosaveStatus('Mudanças serão salvas automaticamente neste navegador.', 'idle');
+  }
 
   function createOldCar(preset = {}) {
     const id = `oldcar_${++oldCarCounter}`;
@@ -1741,6 +2001,7 @@
     // Renderizar gráfico
     renderChart(globals, H, histAntigo, carResults, bestOld);
     renderLegendAndRanking(globals, H, histAntigo, carResults, bestOld);
+    saveState();
   }
 
   // Atualiza o <select> de carro de referência para o aporte
@@ -1978,10 +2239,9 @@
   }
 
   // ============ INIT ============
-  oldCars.push(createOldCar({ name: 'Meu carro de 1993' }));
-
-  cars.push(createCar({ name: 'Honda HR-V', color: CAR_COLORS[0] }));
-  cars.push(createCar({ name: 'Toyota Corolla', color: CAR_COLORS[1], valor: 120000, entrada: 40000 }));
+  if (!loadState()) {
+    seedDefaultState();
+  }
 
   $('add_old_car').addEventListener('click', () => {
     oldCars.push(createOldCar({}));
@@ -1997,6 +2257,8 @@
    'km_mes', 'combustivel_preco']
     .forEach(id => $(id).addEventListener('input', recalcular));
 
+  $('download_filled_html').addEventListener('click', downloadFilledHTML);
+
   $('aporte_ref_car').addEventListener('change', e => {
     aporteRefCarId = e.target.value;
     recalcular();
@@ -2004,20 +2266,17 @@
 
   document.querySelectorAll('.quick-pick').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.quick-pick').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
       $('horizonte').value = btn.dataset.h;
+      syncQuickPicks();
       recalcular();
     });
   });
 
   $('horizonte').addEventListener('input', () => {
-    const v = parseInt($('horizonte').value);
-    document.querySelectorAll('.quick-pick').forEach(b => {
-      b.classList.toggle('active', parseInt(b.dataset.h) === v);
-    });
+    syncQuickPicks();
   });
 
+  syncQuickPicks();
   renderAll();
 })();
 </script>
