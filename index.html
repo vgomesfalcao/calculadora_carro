@@ -427,52 +427,34 @@
   /* GLOBAL PREMISSES */
   .globals-grid {
     display: grid;
-    grid-template-columns: minmax(240px, 340px) minmax(320px, 1fr) minmax(320px, 1fr);
-    gap: 16px 28px;
+    grid-template-columns: repeat(2, minmax(320px, 1fr));
+    gap: 0 40px;
     align-items: start;
   }
 
-  .globals-compact-column {
-    display: grid;
-    gap: 16px;
-    align-content: start;
+  .globals-compact-column,
+  .globals-paired-column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
 
   .globals-grid .field {
-    width: min(100%, 340px);
-    justify-self: start;
-    grid-template-columns: 1fr;
-    gap: 8px;
-    align-items: start;
-  }
-
-  .globals-grid .field.compact {
-    max-width: 340px;
-  }
-
-  .globals-grid .field.compact .input-wrap {
-    max-width: 340px;
-  }
-
-  .globals-compact-column .field,
-  .globals-compact-column .field.compact {
     width: 100%;
-    max-width: 340px;
+    grid-template-columns: 1fr minmax(150px, 180px);
+    gap: 20px;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px dashed var(--line);
   }
 
-  .globals-compact-column .field label {
-    width: 100%;
+  .globals-grid .field:last-child {
+    border-bottom: none;
   }
 
-  .globals-compact-column .field.compact .input-wrap {
-    width: fit-content;
-    max-width: 100%;
-    margin-left: auto;
-  }
-
-  .globals-compact-column .input-wrap {
-    width: auto;
-    min-width: 0;
+  .globals-grid .field.paired-field {
+    grid-template-columns: 1fr minmax(260px, 300px);
+    align-items: center;
   }
 
   .globals-grid .input-wrap {
@@ -487,19 +469,6 @@
     min-width: 0;
   }
 
-  .globals-grid .globals-compact-column input[type="number"],
-  .globals-grid .globals-compact-column input.numeric-input {
-    width: clamp(140px, 10vw, 190px);
-    flex: 0 0 auto;
-  }
-
-  .globals-grid .field.paired-field {
-    width: 100%;
-    max-width: none;
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
   .globals-grid .paired-inputs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -507,42 +476,37 @@
   @media (max-width: 1120px) {
     .globals-grid {
       grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 0 28px;
     }
 
-    .globals-compact-column {
-      grid-column: 1 / -1;
-      grid-template-columns: repeat(3, minmax(220px, 1fr));
+    .globals-grid .field {
+      grid-template-columns: 1fr minmax(130px, 160px);
+      gap: 16px;
+    }
+
+    .globals-grid .field.paired-field {
+      grid-template-columns: 1fr minmax(220px, 260px);
     }
   }
 
   @media (max-width: 980px) {
-    .globals-grid .field.compact {
-      max-width: none;
-    }
-
-    .globals-grid .field.compact .input-wrap {
-      max-width: none;
-    }
-
-    .globals-compact-column .input-wrap {
-      width: 100%;
-    }
-
-    .globals-grid .globals-compact-column input[type="number"],
-    .globals-grid .globals-compact-column input.numeric-input {
-      width: 100%;
-      flex: 1 1 auto;
-    }
-
     .globals-grid {
       grid-template-columns: 1fr;
     }
 
-    .globals-compact-column {
-      grid-column: auto;
+    .globals-grid .field,
+    .globals-grid .field.paired-field {
       grid-template-columns: 1fr;
+      align-items: start;
+      gap: 10px;
     }
 
+    .globals-grid .paired-inputs {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
     .globals-grid .paired-inputs {
       grid-template-columns: 1fr;
     }
@@ -1293,7 +1257,8 @@
 
     <div class="globals-grid">
       <div class="globals-compact-column">
-        <div class="field compact">
+        <div class="section-label">Caixa &amp; despesas</div>
+        <div class="field">
           <label>Capital inicial disponível
             <small>Seu caixa hoje</small>
           </label>
@@ -1303,7 +1268,7 @@
           </div>
         </div>
 
-        <div class="field compact">
+        <div class="field">
           <label>Preço combustível</label>
           <div class="input-wrap">
             <span class="prefix">R$</span>
@@ -1311,7 +1276,7 @@
           </div>
         </div>
 
-        <div class="field compact">
+        <div class="field">
           <label>Aporte mensal disponível
             <small>Valor fixo que você consegue destinar por mês para financiar ou poupar para compra à vista</small>
           </label>
@@ -1322,45 +1287,48 @@
         </div>
       </div>
 
-      <div class="field paired-field">
-        <label>Rendimento renda fixa
-          <small>Preencha ao mês ou ao ano. O outro valor é calculado automaticamente.</small>
-        </label>
-        <div class="paired-inputs">
-          <div class="paired-slot">
-            <span class="paired-slot-label">Mensal</span>
-            <div class="input-wrap">
-              <input type="number" id="rendimento_mes" value="0.80" min="0" step="0.01">
-              <span class="suffix">% a.m.</span>
+      <div class="globals-paired-column">
+        <div class="section-label">Taxas &amp; uso</div>
+        <div class="field paired-field">
+          <label>Rendimento renda fixa
+            <small>Preencha ao mês ou ao ano. O outro valor é calculado automaticamente.</small>
+          </label>
+          <div class="paired-inputs">
+            <div class="paired-slot">
+              <span class="paired-slot-label">Mensal</span>
+              <div class="input-wrap">
+                <input type="number" id="rendimento_mes" value="0.80" min="0" step="0.01">
+                <span class="suffix">% a.m.</span>
+              </div>
             </div>
-          </div>
-          <div class="paired-slot">
-            <span class="paired-slot-label">Anual</span>
-            <div class="input-wrap">
-              <input type="number" id="rendimento_ano" value="10.03" min="0" step="0.01">
-              <span class="suffix">% a.a.</span>
+            <div class="paired-slot">
+              <span class="paired-slot-label">Anual</span>
+              <div class="input-wrap">
+                <input type="number" id="rendimento_ano" value="10.03" min="0" step="0.01">
+                <span class="suffix">% a.a.</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="field paired-field">
-        <label>Rodagem
-          <small>Preencha por mês ou por ano. O outro valor é calculado automaticamente.</small>
-        </label>
-        <div class="paired-inputs">
-          <div class="paired-slot">
-            <span class="paired-slot-label">Mensal</span>
-            <div class="input-wrap">
-              <input type="number" id="km_mes" value="1500" min="0" step="50">
-              <span class="suffix">km/mês</span>
+        <div class="field paired-field">
+          <label>Rodagem
+            <small>Preencha por mês ou por ano. O outro valor é calculado automaticamente.</small>
+          </label>
+          <div class="paired-inputs">
+            <div class="paired-slot">
+              <span class="paired-slot-label">Mensal</span>
+              <div class="input-wrap">
+                <input type="number" id="km_mes" value="1500" min="0" step="50">
+                <span class="suffix">km/mês</span>
+              </div>
             </div>
-          </div>
-          <div class="paired-slot">
-            <span class="paired-slot-label">Anual</span>
-            <div class="input-wrap">
-              <input type="number" id="km_ano" value="18000" min="0" step="100">
-              <span class="suffix">km/ano</span>
+            <div class="paired-slot">
+              <span class="paired-slot-label">Anual</span>
+              <div class="input-wrap">
+                <input type="number" id="km_ano" value="18000" min="0" step="100">
+                <span class="suffix">km/ano</span>
+              </div>
             </div>
           </div>
         </div>
