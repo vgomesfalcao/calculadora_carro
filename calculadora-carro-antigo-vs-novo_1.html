@@ -1,0 +1,2026 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora: Vale a pena trocar o carro?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@400;500;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f4f1ea;
+    --bg-card: #ffffff;
+    --ink: #1a1a1a;
+    --ink-soft: #4a4a4a;
+    --ink-mute: #8a8a8a;
+    --line: #e6e1d6;
+    --line-strong: #c9c2b0;
+    --accent-old: #b8562a;
+    --highlight: #f5e9c8;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(184, 86, 42, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(45, 95, 74, 0.05) 0%, transparent 40%);
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 48px 32px 80px;
+  }
+
+  header {
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--line-strong);
+    padding-bottom: 32px;
+  }
+
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 16px;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+
+  h1 em { font-style: italic; font-weight: 400; color: var(--accent-old); }
+
+  .subtitle {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    max-width: 720px;
+    line-height: 1.55;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  .card.old { border-top: 3px solid var(--accent-old); }
+  .card.horizon { background: var(--ink); color: var(--bg); border: none; }
+  .card.globals { border-top: 3px solid #3a5a8c; }
+
+  .card-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .card.horizon .card-header { border-bottom-color: rgba(255,255,255,0.15); }
+
+  .card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .card-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  .card.horizon .card-subtitle { color: rgba(255,255,255,0.5); }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 1100px) { .main-grid { grid-template-columns: 1fr; } }
+
+  .section { margin-bottom: 20px; }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--line);
+  }
+
+  .field {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 0;
+  }
+
+  .field label { font-size: 0.9rem; color: var(--ink-soft); }
+  .field label small { display: block; font-size: 0.72rem; color: var(--ink-mute); margin-top: 2px; }
+
+  .input-wrap {
+    display: inline-flex;
+    align-items: stretch;
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    transition: border-color 0.15s, background 0.15s;
+    overflow: hidden;
+  }
+
+  .input-wrap:focus-within {
+    border-color: var(--accent-old);
+    background: #fff;
+  }
+
+  .car-card .input-wrap:focus-within,
+  .fin-card .input-wrap:focus-within {
+    border-color: var(--car-color, var(--accent-old));
+  }
+
+  .input-wrap .prefix,
+  .input-wrap .suffix {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink-mute);
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .input-wrap .prefix { border-right: 1px dashed var(--line); }
+  .input-wrap .suffix { border-left: 1px dashed var(--line); }
+
+  input[type="number"], input[type="text"], input[type="color"] {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.88rem;
+    font-weight: 500;
+    text-align: right;
+    width: 100px;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    color: var(--ink);
+    min-width: 0;
+  }
+
+  /* Standalone inputs (sem wrap) mantêm a borda */
+  input[type="text"].scenario-name-input,
+  input[type="text"].car-name-input,
+  input[type="text"].fin-name-input {
+    border: 1px solid transparent;
+    background: transparent;
+  }
+
+  input[type="color"] {
+    padding: 2px;
+    width: 44px;
+    height: 32px;
+    cursor: pointer;
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    background: var(--bg);
+  }
+
+  input[type="number"]:focus, input[type="text"]:focus {
+    outline: none;
+  }
+
+  .car-card input[type="number"]:focus,
+  .car-card input[type="text"]:focus { border-color: var(--car-color, var(--accent-old)); }
+
+  .fin-card input[type="number"]:focus,
+  .fin-card input[type="text"]:focus { border-color: var(--car-color, var(--accent-old)); }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
+
+  .computed {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-top: 1px dashed var(--line);
+    margin-top: 6px;
+  }
+
+  .computed-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  .computed-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* HORIZON */
+  .horizon-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .horizon-content label {
+    font-family: 'Fraunces', serif;
+    font-size: 1.15rem;
+    font-style: italic;
+    color: rgba(255,255,255,0.7);
+  }
+
+  .horizon-input { display: flex; align-items: baseline; gap: 8px; }
+
+  .horizon-input input {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid rgba(255,255,255,0.3);
+    color: #fff;
+    font-family: 'Fraunces', serif;
+    font-size: 2.8rem;
+    font-weight: 600;
+    text-align: center;
+    width: 130px;
+    padding: 0 8px 4px;
+    border-radius: 0;
+  }
+
+  .horizon-input input:focus { border-bottom-color: #fff; background: transparent; }
+
+  .horizon-input .unit {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    color: rgba(255,255,255,0.6);
+  }
+
+  .quick-picks { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .quick-pick {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    background: transparent;
+    color: rgba(255,255,255,0.6);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+
+  .quick-pick:hover { color: #fff; border-color: #fff; }
+  .quick-pick.active { background: #fff; color: var(--ink); border-color: #fff; }
+
+  /* GLOBAL PREMISSES */
+  .globals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px 28px;
+  }
+
+  /* CARS SECTION */
+  .cars-section {
+    margin-bottom: 24px;
+  }
+
+  .cars-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--ink);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .cars-section-header h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.7rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .cars-section-header .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+  }
+
+  .car-card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--car-color, #666);
+    border-radius: 4px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    transition: box-shadow 0.15s;
+  }
+
+  .car-card.active {
+    box-shadow: 0 0 0 2px var(--car-color, #666), 0 4px 16px rgba(0,0,0,0.04);
+  }
+
+  .car-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .car-name-input {
+    flex: 1;
+    font-family: 'Fraunces', serif !important;
+    font-size: 1.3rem !important;
+    font-weight: 600 !important;
+    padding: 4px 8px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    text-align: left !important;
+    min-width: 100px;
+    width: auto;
+  }
+  .car-name-input:hover { border-color: var(--line) !important; }
+  .car-name-input:focus { background: #fff !important; border-color: var(--car-color) !important; }
+
+  .icon-btn {
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    padding: 6px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  .icon-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .icon-btn.danger:hover { background: #c14545; color: #fff; border-color: #c14545; }
+  .icon-btn.primary {
+    background: var(--car-color, var(--ink));
+    color: #fff;
+    border-color: var(--car-color, var(--ink));
+  }
+  .icon-btn.primary:hover { opacity: 0.85; }
+
+  .car-body-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 32px;
+  }
+
+  @media (max-width: 900px) { .car-body-grid { grid-template-columns: 1fr; } }
+
+  .financings-wrap {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+
+  .financings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .financings-header-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+
+  .financings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+  }
+
+  .fin-card {
+    background: var(--bg);
+    border-radius: 3px;
+    padding: 16px;
+    border-left: 3px solid var(--car-color);
+    opacity: 0.7;
+    transition: opacity 0.15s, box-shadow 0.15s, background 0.15s;
+    position: relative;
+  }
+
+  .fin-card.active {
+    opacity: 1;
+    background: #fff;
+    box-shadow: 0 0 0 2px var(--car-color), 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .fin-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--line);
+  }
+
+  .fin-name-input {
+    flex: 1;
+    font-family: 'Inter Tight', sans-serif !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    padding: 3px 6px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    text-align: left !important;
+    min-width: 80px;
+    width: auto;
+  }
+  .fin-name-input:hover { border-color: var(--line) !important; }
+  .fin-name-input:focus { background: #fff !important; border-color: var(--car-color) !important; }
+
+  .fin-card .field label { font-size: 0.82rem; }
+  .fin-card .field { padding: 6px 0; }
+  .fin-card input[type="number"] { width: 80px; font-size: 0.82rem; padding: 6px 8px; }
+  .fin-card .input-wrap .prefix,
+  .fin-card .input-wrap .suffix { font-size: 0.7rem; padding: 0 6px; }
+
+  .toggle-row { display: flex; gap: 4px; margin: 6px 0; }
+
+  .toggle-row button {
+    flex: 1;
+    padding: 5px;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    color: var(--ink-soft);
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+  .toggle-row button.active {
+    background: var(--car-color);
+    color: #fff;
+    border-color: var(--car-color);
+  }
+
+  .fin-metrics {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+  }
+
+  .metric { display: flex; flex-direction: column; }
+
+  .metric-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 2px;
+  }
+
+  .metric-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .metric-value.highlight { color: var(--car-color); font-size: 0.9rem; }
+
+  .fin-select-btn {
+    margin-top: 10px;
+    padding: 6px 12px;
+    background: var(--car-color);
+    color: #fff;
+    border: none;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    width: 100%;
+    text-transform: uppercase;
+    transition: opacity 0.15s;
+  }
+  .fin-select-btn:hover { opacity: 0.85; }
+  .fin-card.active .fin-select-btn { background: var(--ink); cursor: default; }
+
+  .add-btn {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    padding: 9px 16px;
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: opacity 0.15s;
+  }
+  .add-btn:hover { opacity: 0.85; }
+
+  .add-btn.small {
+    padding: 6px 12px;
+    font-size: 0.68rem;
+  }
+
+  /* CHART */
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 32px;
+    margin-bottom: 20px;
+    border-top: 3px solid var(--ink);
+  }
+
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    margin-top: 16px;
+  }
+
+  .chart-svg { width: 100%; height: 100%; display: block; }
+
+  .chart-axis-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    fill: var(--ink-mute);
+  }
+
+  .chart-grid-line { stroke: var(--line); stroke-width: 1; }
+  .chart-axis-line { stroke: var(--line-strong); stroke-width: 1.5; }
+
+  .chart-line {
+    fill: none;
+    stroke-width: 2.5;
+    transition: stroke-width 0.15s;
+  }
+
+  .chart-line:hover { stroke-width: 4; }
+
+  .chart-dot {
+    fill: #fff;
+    stroke-width: 2;
+  }
+
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+  }
+
+  .legend-line {
+    width: 28px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  .chart-tooltip {
+    position: absolute;
+    background: var(--ink);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    min-width: 200px;
+  }
+
+  .chart-tooltip.show { opacity: 1; }
+
+  .chart-tooltip .tt-title {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .tt-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    margin: 3px 0;
+  }
+
+  .tt-row .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+
+  /* Ranking abaixo do gráfico */
+  .ranking {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+
+  .ranking-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 14px;
+  }
+
+  .ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  .ranking-table th {
+    text-align: left;
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    border-bottom: 2px solid var(--ink);
+    white-space: nowrap;
+  }
+
+  .ranking-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .ranking-table tr td:nth-child(2) {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 0.98rem;
+  }
+
+  .ranking-table .pos {
+    width: 40px;
+    font-weight: 700;
+    color: var(--ink-mute);
+  }
+
+  .ranking-table .pos.p1 { color: #c99a2a; }
+  .ranking-table .pos.p2 { color: #8a8a8a; }
+  .ranking-table .pos.p3 { color: #b8562a; }
+
+  .ranking-table .car-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  .ranking-table .delta-pos { color: #2d5f4a; font-weight: 600; }
+  .ranking-table .delta-neg { color: #c14545; font-weight: 600; }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 0.05em;
+    line-height: 1.7;
+  }
+
+  footer strong { color: var(--ink-soft); }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="tag">Simulador Financeiro · Veículo · v3</div>
+    <h1>Vale a pena trocar o<br><em>carro de 1993</em>?</h1>
+    <p class="subtitle">
+      Compare múltiplos carros novos contra manter o antigo, considerando a evolução do seu patrimônio líquido ao longo do tempo.
+      Cada carro pode ter vários cenários de financiamento. A "sobra" mensal rende no CDI.
+    </p>
+  </header>
+
+  <!-- HORIZONTE -->
+  <div class="card horizon">
+    <div class="card-header">
+      <div class="card-title" style="color:#fff;">Horizonte de análise</div>
+      <div class="card-subtitle">Base temporal</div>
+    </div>
+    <div class="horizon-content">
+      <label>Comparar a evolução do patrimônio em</label>
+      <div class="horizon-input">
+        <input type="number" id="horizonte" value="60" min="1" max="240">
+        <span class="unit">meses</span>
+      </div>
+      <div class="quick-picks">
+        <button class="quick-pick" data-h="12">12m</button>
+        <button class="quick-pick" data-h="36">36m</button>
+        <button class="quick-pick active" data-h="60">60m</button>
+        <button class="quick-pick" data-h="120">120m</button>
+        <button class="quick-pick" data-h="180">180m</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREMISSAS GLOBAIS -->
+  <div class="card globals">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Premissas globais</div>
+        <div style="font-size:0.82rem; color:var(--ink-mute); margin-top:4px;">
+          Capital inicial, rendimento e preço de venda do antigo — aplicados a todos os cenários.
+        </div>
+      </div>
+      <div class="card-subtitle">Bloco 0</div>
+    </div>
+
+    <div class="globals-grid">
+      <div class="field">
+        <label>Capital inicial disponível
+          <small>Seu caixa hoje</small>
+        </label>
+        <div class="input-wrap">
+          <span class="prefix">R$</span>
+          <input type="number" id="capital_inicial" value="50000" min="0" step="1000">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Rendimento renda fixa
+          <small>CDI ~10% a.a. ≈ 0,80% a.m.</small>
+        </label>
+        <div class="input-wrap">
+          <input type="number" id="rendimento_mes" value="0.80" min="0" step="0.01">
+          <span class="suffix">% a.m.</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Km por mês
+          <small>Usado em todos os cenários</small>
+        </label>
+        <div class="input-wrap">
+          <input type="number" id="km_mes" value="1500" min="0" step="50">
+          <span class="suffix">km</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Preço combustível</label>
+        <div class="input-wrap">
+          <span class="prefix">R$</span>
+          <input type="number" id="combustivel_preco" value="6.20" min="0" step="0.10">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARROS ANTIGOS -->
+  <div class="cars-section">
+    <div class="cars-section-header">
+      <div>
+        <h2>Carros antigos</h2>
+        <div class="meta">Adicione quantos quiser — o melhor deles entra no gráfico</div>
+      </div>
+      <button class="add-btn" id="add_old_car">+ Adicionar carro antigo</button>
+    </div>
+
+    <div id="old_cars_container"></div>
+  </div>
+
+  <!-- CARROS NOVOS -->
+  <div class="cars-section">
+    <div class="cars-section-header">
+      <div>
+        <h2>Carros novos</h2>
+        <div class="meta">Cada carro tem sua cor e seus cenários de financiamento</div>
+      </div>
+      <button class="add-btn" id="add_car">+ Adicionar carro</button>
+    </div>
+
+    <div id="cars_container"></div>
+  </div>
+
+  <!-- APORTE DE REFERÊNCIA -->
+  <div class="card" style="border-top:3px solid #c99a2a;">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Aporte mensal em renda fixa</div>
+        <div style="font-size:0.82rem; color:var(--ink-mute); margin-top:4px;">
+          Se você <strong>não</strong> comprar um carro novo, o dinheiro que iria para ele (menos o custo do antigo) vai para investimento. Escolha o carro novo que serve de referência para esse cálculo.
+        </div>
+      </div>
+      <div class="card-subtitle">Bloco 4</div>
+    </div>
+
+    <div class="globals-grid">
+      <div class="field">
+        <label>Carro novo de referência
+          <small>O aporte = gastos dele − gastos do antigo</small>
+        </label>
+        <div class="input-wrap" style="padding:0;">
+          <select id="aporte_ref_car" style="font-family:'JetBrains Mono', monospace; font-size:0.88rem; padding:8px 10px; background:transparent; border:none; width:100%; cursor:pointer;"></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Aporte mensal calculado
+          <small>Com piso em zero</small>
+        </label>
+        <div class="input-wrap">
+          <span class="computed-value" id="aporte_valor_out" style="color:#c99a2a; font-size:1.1rem; padding:6px 10px;">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px; padding:12px 14px; background:var(--bg); border-radius:3px; font-size:0.85rem; color:var(--ink-soft); line-height:1.55;">
+      <span id="aporte_explain">—</span>
+    </div>
+  </div>
+
+  <!-- GRÁFICO -->
+  <div class="chart-card">
+    <div class="card-header" style="border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:0;">
+      <div>
+        <div class="card-title">Evolução do patrimônio</div>
+        <div style="font-size:0.82rem; color:var(--ink-mute); margin-top:4px;">
+          Caixa em renda fixa + valor residual do carro. No cenário "manter antigo", o dinheiro economizado vs o novo de referência vira aporte mensal investido.
+        </div>
+      </div>
+      <div class="card-subtitle">Gráfico</div>
+    </div>
+
+    <div class="chart-wrap">
+      <svg class="chart-svg" id="chart_svg" viewBox="0 0 900 500" preserveAspectRatio="none"></svg>
+      <div class="chart-tooltip" id="chart_tooltip"></div>
+    </div>
+
+    <div class="chart-legend" id="chart_legend"></div>
+
+    <div class="ranking">
+      <div class="ranking-title">Ranking — patrimônio no fim do horizonte</div>
+      <div style="overflow-x:auto;">
+        <table class="ranking-table" id="ranking_table"></table>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <strong>Metodologia do patrimônio:</strong>
+    Todos os cenários partem do mesmo <strong>capital inicial</strong>. Quando você compra um carro novo, o valor da <strong>venda do antigo</strong> entra como caixa e a <strong>entrada do financiamento</strong> sai imediatamente.
+    <strong>Aporte mensal no cenário "manter antigo":</strong> a cada mês, o dinheiro que <em>iria</em> para o carro novo de referência (parcela + operacional) menos os gastos do antigo é aportado no investimento (piso em zero).
+    A cada mês: <strong>(1)</strong> o caixa aplicado rende à taxa de renda fixa configurada, <strong>(2)</strong> aporte mensal é somado ao caixa (se positivo), <strong>(3)</strong> as despesas do mês são debitadas. Se o caixa ficar negativo, vira dívida (não rende juros).
+    <strong>Patrimônio = caixa investido + valor atual do carro.</strong>
+    Depreciação do novo: curva 20%/15%/10% a.a. Antigo: linear 5% a.a. com piso de 50% do valor de venda.
+    <strong>Price</strong>: parcela fixa. <strong>SAC</strong>: amortização constante, parcela decrescente.
+    <strong>CET (Custo Efetivo Total)</strong>: por padrão, a calculadora adiciona <strong>10%</strong> sobre a parcela Price pura para refletir IOF, tarifas e seguros embutidos típicos do Brasil. Se você tem a proposta do banco em mãos, digite a <strong>parcela real</strong> no campo dedicado — a taxa efetiva é recalculada para bater exatamente com o valor do banco.
+    <strong>Amortização extra</strong>: "reduz prazo" paga saldo mantendo parcela; "reduz parcela" recalcula parcela sobre saldo menor.
+    Simulador de apoio à decisão — não substitui análise profissional.
+  </footer>
+
+</div>
+
+<script>
+(function() {
+  const $ = id => document.getElementById(id);
+  const fmtBRL = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  const fmtBRL2 = v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const escapeHTML = str => String(str).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[c]);
+
+  const CAR_COLORS = [
+    '#2d5f4a', '#3a5a8c', '#8c3a5a', '#c2772a', '#5a6c3a',
+    '#6a3a8c', '#3a8c8c', '#8c6a3a', '#4a4a4a', '#8c3a3a',
+  ];
+
+  const ANTIGO_COLOR = '#b8562a';
+  const CET_PADRAO = 0.10; // 10% adicional sobre Price puro para refletir IOF + tarifas + seguros típicos
+
+  // Dado uma parcela desejada (real do banco), resolve numericamente a taxa efetiva que a gera
+  function taxaEfetivaParaParcela(pv, n, parcelaDesejada) {
+    if (pv <= 0 || parcelaDesejada <= 0 || n <= 0) return 0;
+    if (parcelaDesejada * n <= pv) return 0; // parcela tão baixa que é juros zero ou negativos
+    // Bissection: taxa entre 0.0001% e 50% ao mês
+    let lo = 0.000001, hi = 0.5;
+    for (let iter = 0; iter < 80; iter++) {
+      const mid = (lo + hi) / 2;
+      const parcela = calcPrice(pv, mid, n);
+      if (Math.abs(parcela - parcelaDesejada) < 0.01) return mid;
+      if (parcela < parcelaDesejada) lo = mid;
+      else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  // Resolve qual taxa efetiva usar para um financiamento:
+  // - Se parcelaReal > 0: usa essa parcela como âncora, calcula a taxa que a gera
+  // - Caso contrário: taxa nominal + margem CET padrão (10%) — aplica na taxa para gerar parcela ~10% maior
+  // Retorna { taxaEfetiva, parcelaReferencia, fonte: 'manual'|'auto'|'nominal' }
+  function resolverTaxaEfetiva(pv, jurosNominalMes, prazo, parcelaReal) {
+    if (parcelaReal && parcelaReal > 0 && pv > 0) {
+      const taxa = taxaEfetivaParaParcela(pv, prazo, parcelaReal);
+      return { taxaEfetiva: taxa, parcelaReferencia: parcelaReal, fonte: 'manual' };
+    }
+    // Auto: taxa nominal + 10% de margem sobre a parcela (reflete CET médio)
+    const parcelaPura = calcPrice(pv, jurosNominalMes, prazo);
+    const parcelaComCet = parcelaPura * (1 + CET_PADRAO);
+    const taxaEfetiva = taxaEfetivaParaParcela(pv, prazo, parcelaComCet);
+    return { taxaEfetiva, parcelaReferencia: parcelaComCet, fonte: 'auto' };
+  }
+
+  let cars = [];
+  let oldCars = [];
+  let carCounter = 0;
+  let oldCarCounter = 0;
+  let finCounter = 0;
+  let aporteRefCarId = null; // ID do carro novo usado como referência para calcular o aporte
+
+  function createOldCar(preset = {}) {
+    const id = `oldcar_${++oldCarCounter}`;
+    return {
+      id,
+      name: preset.name || `Antigo ${oldCars.length + 1}`,
+      manutencao: 450,
+      consumo: 8,
+      seguroAnual: 1800,
+      licenciamentoAnual: 180,
+      vendaAtual: 8000, // valor que daria se vendesse hoje
+      ...preset
+    };
+  }
+
+  function createFinancing(preset = {}) {
+    const id = `fin_${++finCounter}`;
+    return {
+      id,
+      name: preset.name || `Financiamento ${Math.random().toString(36).slice(2,5).toUpperCase()}`,
+      prazo: 48,
+      juros: 1.45,
+      amortType: 'price',
+      extraAmort: 0,
+      extraMode: 'prazo',
+      parcelaReal: 0, // 0 = usar cálculo automático (Price puro + 10% CET padrão). >0 = sobrescreve
+      ...preset
+    };
+  }
+
+  function createCar(preset = {}) {
+    const id = `car_${++carCounter}`;
+    const color = preset.color || CAR_COLORS[cars.length % CAR_COLORS.length];
+    const car = {
+      id,
+      name: preset.name || `Carro ${cars.length + 1}`,
+      color,
+      valor: 90000,
+      entrada: 30000,
+      ipvaPerc: 4,
+      seguroPerc: 4,
+      revisao: 900,
+      consumo: 13,
+      financings: [],
+      activeFinancingId: null,
+      ...preset
+    };
+    if (car.financings.length === 0) {
+      const fin1 = createFinancing({ name: 'Banco A', juros: 1.45, prazo: 48 });
+      const fin2 = createFinancing({ name: 'Banco B', juros: 1.25, prazo: 60 });
+      car.financings = [fin1, fin2];
+      car.activeFinancingId = fin1.id;
+    }
+    return car;
+  }
+
+  // ============ FINANCIAMENTO ============
+  function calcPrice(pv, i, n) {
+    if (i === 0) return pv / n;
+    const f = Math.pow(1 + i, n);
+    return pv * (i * f) / (f - 1);
+  }
+
+  function simularFinanciamento(pv, i, n, amortType, extra, extraMode) {
+    const result = [];
+    if (pv <= 0) return { meses: [], prazoEfetivo: 0, totalPago: 0, totalJuros: 0, parcelaMedia: 0, primeiraParcela: 0, ultimaParcela: 0 };
+
+    let saldo = pv;
+    let parcelaPrice = calcPrice(pv, i, n);
+    let amortSAC = pv / n;
+    let totalPago = 0;
+    let totalJuros = 0;
+    let mes = 0;
+    const maxMeses = n + 2;
+
+    while (saldo > 0.01 && mes < maxMeses) {
+      mes++;
+      const juros = saldo * i;
+      let parcelaBase, amortBase;
+
+      if (amortType === 'price') {
+        parcelaBase = parcelaPrice;
+        amortBase = parcelaBase - juros;
+      } else {
+        amortBase = amortSAC;
+        parcelaBase = amortBase + juros;
+      }
+
+      if (amortBase > saldo) amortBase = saldo;
+      parcelaBase = amortBase + juros;
+
+      const extraReal = Math.min(extra, Math.max(0, saldo - amortBase));
+      const totalMes = parcelaBase + extraReal;
+      saldo -= (amortBase + extraReal);
+      if (saldo < 0) saldo = 0;
+
+      totalPago += totalMes;
+      totalJuros += juros;
+
+      result.push({ mes, parcelaBase, juros, amortBase, extra: extraReal, total: totalMes, saldoFinal: saldo });
+
+      if (saldo <= 0.01) break;
+
+      if (extraMode === 'parcela' && extra > 0) {
+        const mesesRestantes = n - mes;
+        if (mesesRestantes > 0) {
+          if (amortType === 'price') parcelaPrice = calcPrice(saldo, i, mesesRestantes);
+          else amortSAC = saldo / mesesRestantes;
+        } else break;
+      }
+    }
+
+    return {
+      meses: result,
+      prazoEfetivo: result.length,
+      totalPago,
+      totalJuros,
+      parcelaMedia: result.length > 0 ? totalPago / result.length : 0,
+      primeiraParcela: result[0]?.total || 0,
+      ultimaParcela: result[result.length - 1]?.total || 0
+    };
+  }
+
+  // ============ DEPRECIAÇÃO ============
+  // Retorna o VALOR ATUAL do carro no mês M (começa em valorInicial)
+  function valorCarroNoMes(valorInicial, mes) {
+    const taxas = [0.20, 0.15, 0.10, 0.10, 0.10, 0.08, 0.08, 0.08, 0.08, 0.08];
+    let valor = valorInicial;
+    let mesesRestantes = mes;
+    let ano = 0;
+    while (mesesRestantes > 0) {
+      const taxaAno = taxas[Math.min(ano, taxas.length - 1)];
+      const mesesEsteAno = Math.min(12, mesesRestantes);
+      const perdaAno = valor * taxaAno * (mesesEsteAno / 12);
+      valor -= perdaAno;
+      mesesRestantes -= mesesEsteAno;
+      ano++;
+    }
+    return Math.max(0, valor);
+  }
+
+  // Antigo: depreciação linear mínima (5% a.a.) com piso no valor de venda
+  function valorAntigoNoMes(valorVendaAtual, mes) {
+    const taxaAnual = 0.05;
+    const fatorMes = Math.pow(1 - taxaAnual, mes / 12);
+    return Math.max(valorVendaAtual * 0.5, valorVendaAtual * fatorMes);
+  }
+
+  // ============ SIMULAÇÃO PATRIMÔNIO ============
+  // Lógica: a cada mês, (1) caixa positivo rende à taxa CDI, (2) aporte mensal entra (se houver), (3) despesas do mês são debitadas.
+  // Se caixa ficar negativo, vira dívida e NÃO rende (mas também não cresce como dívida — simplificação).
+  function simularPatrimonioAntigo(globals, antigo, horizonte, aportePorMes) {
+    const caixaInicial = globals.capitalInicial;
+    const combMes = (globals.kmMes / antigo.consumo) * globals.precoComb;
+    const gastoMes = antigo.manutencao + combMes + (antigo.seguroAnual / 12) + (antigo.licenciamentoAnual / 12);
+    const rend = globals.rendMes;
+    const historico = [];
+
+    let caixa = caixaInicial;
+    historico.push({ mes: 0, caixa, patrimonio: caixa + antigo.vendaAtual, gastoAcum: 0, aporteAcum: 0 });
+
+    let gastoAcum = 0;
+    let aporteAcum = 0;
+    for (let m = 1; m <= horizonte; m++) {
+      // 1) Rendimento sobre caixa positivo
+      if (caixa > 0) caixa = caixa * (1 + rend);
+      // 2) Aporte mensal (piso em zero)
+      const aporte = aportePorMes ? Math.max(0, aportePorMes[m] || 0) : 0;
+      caixa += aporte;
+      aporteAcum += aporte;
+      // 3) Debitar gastos do antigo
+      caixa -= gastoMes;
+      gastoAcum += gastoMes;
+      const valorCarro = valorAntigoNoMes(antigo.vendaAtual, m);
+      historico.push({ mes: m, caixa, patrimonio: caixa + valorCarro, gastoAcum, aporteAcum });
+    }
+    return historico;
+  }
+
+  function simularPatrimonioCarroNovo(globals, carro, financing, horizonte, vendaAntigo) {
+    // Caixa inicial: capital + dinheiro da venda do antigo − entrada do financiamento
+    const caixaInicial = globals.capitalInicial + (vendaAntigo || 0) - carro.entrada;
+    const financiado = Math.max(0, carro.valor - carro.entrada);
+    const jurosM = financing.juros / 100;
+    const { taxaEfetiva } = resolverTaxaEfetiva(financiado, jurosM, financing.prazo, financing.parcelaReal);
+
+    const simFin = simularFinanciamento(financiado, taxaEfetiva, financing.prazo, financing.amortType, financing.extraAmort, financing.extraMode);
+
+    const parcelaPorMes = new Array(horizonte + 1).fill(0);
+    for (const m of simFin.meses) {
+      if (m.mes <= horizonte) parcelaPorMes[m.mes] = m.total;
+    }
+
+    const combMes = (globals.kmMes / carro.consumo) * globals.precoComb;
+    const ipvaMes = (carro.valor * (carro.ipvaPerc / 100)) / 12;
+    const seguroMes = (carro.valor * (carro.seguroPerc / 100)) / 12;
+    const revisaoMes = carro.revisao / 12;
+    const operacionalMes = combMes + ipvaMes + seguroMes + revisaoMes;
+
+    const rend = globals.rendMes;
+    const historico = [];
+
+    let caixa = caixaInicial;
+    let valorCarro = carro.valor;
+    historico.push({ mes: 0, caixa, patrimonio: caixa + valorCarro, gastoAcum: carro.entrada });
+
+    let gastoAcum = carro.entrada;
+
+    for (let m = 1; m <= horizonte; m++) {
+      // 1) Rendimento sobre caixa positivo
+      if (caixa > 0) caixa = caixa * (1 + rend);
+      // 2) Debitar parcela do financiamento + operacional
+      const parcela = parcelaPorMes[m] || 0;
+      const gastoMes = parcela + operacionalMes;
+      caixa -= gastoMes;
+      gastoAcum += gastoMes;
+      valorCarro = valorCarroNoMes(carro.valor, m);
+      historico.push({ mes: m, caixa, patrimonio: caixa + valorCarro, gastoAcum });
+    }
+    return { historico, simFin };
+  }
+
+  // ============ UI: OLD CAR CARD ============
+  function renderOldCar(car) {
+    const card = document.createElement('div');
+    card.className = 'car-card old';
+    card.style.setProperty('--car-color', ANTIGO_COLOR);
+    card.dataset.id = car.id;
+
+    card.innerHTML = `
+      <div class="car-header">
+        <span style="width:32px; height:32px; border-radius:50%; background:${ANTIGO_COLOR}; display:inline-block; flex-shrink:0;"></span>
+        <input type="text" class="car-name-input" data-field="name" value="${escapeHTML(car.name)}" maxlength="40">
+        <span style="font-family:'JetBrains Mono', monospace; font-size:0.72rem; color:var(--ink-mute); letter-spacing:0.1em;">CUSTO/MÊS: <strong style="color:${ANTIGO_COLOR};" data-out="total">—</strong></span>
+        <button class="icon-btn danger" data-action="remove-old-car" title="Remover">× remover</button>
+      </div>
+
+      <div class="car-body-grid">
+        <div>
+          <div class="section-label">Manutenção e combustível</div>
+          <div class="field">
+            <label>Manutenção mensal
+              <small>Média últimos 12 meses</small>
+            </label>
+            <div class="input-wrap">
+              <span class="prefix">R$</span>
+              <input type="number" data-field="manutencao" value="${car.manutencao}" min="0" step="10">
+            </div>
+          </div>
+          <div class="field">
+            <label>Consumo</label>
+            <div class="input-wrap">
+              <input type="number" data-field="consumo" value="${car.consumo}" min="1" step="0.5">
+              <span class="suffix">km/L</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Preço venda hoje
+              <small>Se vender para comprar outro</small>
+            </label>
+            <div class="input-wrap">
+              <span class="prefix">R$</span>
+              <input type="number" data-field="vendaAtual" value="${car.vendaAtual}" min="0" step="500">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Taxas anuais</div>
+          <div class="field">
+            <label>Seguro anual</label>
+            <div class="input-wrap">
+              <span class="prefix">R$</span>
+              <input type="number" data-field="seguroAnual" value="${car.seguroAnual}" min="0" step="50">
+            </div>
+          </div>
+          <div class="field">
+            <label>Licenciamento anual</label>
+            <div class="input-wrap">
+              <span class="prefix">R$</span>
+              <input type="number" data-field="licenciamentoAnual" value="${car.licenciamentoAnual}" min="0" step="10">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    card.querySelectorAll('input[data-field]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const field = e.target.dataset.field;
+        if (field === 'name') car[field] = e.target.value;
+        else car[field] = parseFloat(e.target.value) || 0;
+        recalcular();
+      });
+    });
+
+    card.querySelector('[data-action="remove-old-car"]').addEventListener('click', () => {
+      if (oldCars.length <= 1) {
+        alert('Você precisa manter pelo menos 1 carro antigo.');
+        return;
+      }
+      oldCars = oldCars.filter(c => c.id !== car.id);
+      renderAll();
+    });
+
+    return card;
+  }
+
+  // ============ UI: CAR CARD ============
+  function renderCar(car) {
+    const card = document.createElement('div');
+    card.className = 'car-card';
+    card.style.setProperty('--car-color', car.color);
+    card.dataset.id = car.id;
+
+    card.innerHTML = `
+      <div class="car-header">
+        <input type="color" data-field="color" value="${car.color}" title="Cor do carro">
+        <input type="text" class="car-name-input" data-field="name" value="${escapeHTML(car.name)}" maxlength="40">
+        <button class="icon-btn danger" data-action="remove-car" title="Remover carro">× remover</button>
+      </div>
+
+      <div class="car-body-grid">
+        <div>
+          <div class="section-label">Veículo</div>
+          <div class="field">
+            <label>Valor do veículo</label>
+            <div class="input-wrap">
+              <span class="prefix">R$</span>
+              <input type="number" data-field="valor" value="${car.valor}" min="0" step="1000">
+            </div>
+          </div>
+          <div class="field">
+            <label>Entrada
+              <small>Sai do caixa</small>
+            </label>
+            <div class="input-wrap">
+              <span class="prefix">R$</span>
+              <input type="number" data-field="entrada" value="${car.entrada}" min="0" step="1000">
+            </div>
+          </div>
+          <div class="field">
+            <label>Consumo</label>
+            <div class="input-wrap">
+              <input type="number" data-field="consumo" value="${car.consumo}" min="1" step="0.5">
+              <span class="suffix">km/L</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Operacional</div>
+          <div class="field">
+            <label>IPVA
+              <small>% do valor venal</small>
+            </label>
+            <div class="input-wrap">
+              <input type="number" data-field="ipvaPerc" value="${car.ipvaPerc}" min="0" step="0.1">
+              <span class="suffix">%</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Seguro anual
+              <small>% do valor</small>
+            </label>
+            <div class="input-wrap">
+              <input type="number" data-field="seguroPerc" value="${car.seguroPerc}" min="0" step="0.1">
+              <span class="suffix">%</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Revisões anuais</label>
+            <div class="input-wrap">
+              <span class="prefix">R$</span>
+              <input type="number" data-field="revisao" value="${car.revisao}" min="0" step="50">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="financings-wrap">
+        <div class="financings-header">
+          <div class="financings-header-title">Financiamentos — clique para ativar</div>
+          <button class="add-btn small" data-action="add-financing">+ Financiamento</button>
+        </div>
+        <div class="financings-grid" data-financings-container></div>
+      </div>
+    `;
+
+    // Bindings do carro
+    card.querySelectorAll('input[data-field]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const field = e.target.dataset.field;
+        if (field === 'name' || field === 'color') {
+          car[field] = e.target.value;
+          // Atualizar cor visualmente sem re-renderizar tudo
+          if (field === 'color') {
+            card.style.setProperty('--car-color', car.color);
+          }
+        } else {
+          car[field] = parseFloat(e.target.value) || 0;
+        }
+        recalcular();
+      });
+    });
+
+    card.querySelector('[data-action="remove-car"]').addEventListener('click', () => {
+      if (cars.length <= 1) {
+        alert('Você precisa manter pelo menos 1 carro novo para comparação.');
+        return;
+      }
+      cars = cars.filter(c => c.id !== car.id);
+      renderAll();
+    });
+
+    card.querySelector('[data-action="add-financing"]').addEventListener('click', () => {
+      car.financings.push(createFinancing({
+        name: `Banco ${String.fromCharCode(65 + car.financings.length)}`
+      }));
+      renderAll();
+    });
+
+    // Render financings
+    const finContainer = card.querySelector('[data-financings-container]');
+    car.financings.forEach(fin => {
+      finContainer.appendChild(renderFinancing(car, fin));
+    });
+
+    return card;
+  }
+
+  function renderFinancing(car, fin) {
+    const isActive = fin.id === car.activeFinancingId;
+    const card = document.createElement('div');
+    card.className = 'fin-card' + (isActive ? ' active' : '');
+    card.dataset.id = fin.id;
+
+    card.innerHTML = `
+      <div class="fin-card-header">
+        <input type="text" class="fin-name-input" data-field="name" value="${escapeHTML(fin.name)}" maxlength="30">
+        <button class="icon-btn danger" data-action="remove-fin" title="Remover">×</button>
+      </div>
+
+      <div class="field">
+        <label>Prazo</label>
+        <div class="input-wrap">
+          <input type="number" data-field="prazo" value="${fin.prazo}" min="1" step="1">
+          <span class="suffix">meses</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Juros nominal</label>
+        <div class="input-wrap">
+          <input type="number" data-field="juros" value="${fin.juros}" min="0" step="0.01">
+          <span class="suffix">% a.m.</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Parcela real do banco
+          <small>Vazio = calcula automático com +${(CET_PADRAO*100).toFixed(0)}% de CET</small>
+        </label>
+        <div class="input-wrap">
+          <span class="prefix">R$</span>
+          <input type="number" data-field="parcelaReal" value="${fin.parcelaReal || ''}" min="0" step="0.01" placeholder="auto">
+        </div>
+      </div>
+
+      <div class="toggle-row" data-toggle="amortType">
+        <button data-val="price" class="${fin.amortType === 'price' ? 'active' : ''}">Price</button>
+        <button data-val="sac" class="${fin.amortType === 'sac' ? 'active' : ''}">SAC</button>
+      </div>
+
+      <div class="field">
+        <label>Amort. extra</label>
+        <div class="input-wrap">
+          <span class="prefix">R$</span>
+          <input type="number" data-field="extraAmort" value="${fin.extraAmort}" min="0" step="50">
+        </div>
+      </div>
+
+      <div class="toggle-row" data-toggle="extraMode">
+        <button data-val="prazo" class="${fin.extraMode === 'prazo' ? 'active' : ''}">↓ Prazo</button>
+        <button data-val="parcela" class="${fin.extraMode === 'parcela' ? 'active' : ''}">↓ Parcela</button>
+      </div>
+
+      <div class="fin-metrics" data-metrics></div>
+
+      <button class="fin-select-btn" data-action="select-fin">
+        ${isActive ? '✓ Ativo' : 'Ativar'}
+      </button>
+    `;
+
+    card.querySelectorAll('input[data-field]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const field = e.target.dataset.field;
+        if (field === 'name') fin[field] = e.target.value;
+        else fin[field] = parseFloat(e.target.value) || 0;
+        recalcular();
+      });
+    });
+
+    card.querySelectorAll('.toggle-row').forEach(tg => {
+      const field = tg.dataset.toggle;
+      tg.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          fin[field] = btn.dataset.val;
+          tg.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          recalcular();
+        });
+      });
+    });
+
+    card.querySelector('[data-action="remove-fin"]').addEventListener('click', () => {
+      if (car.financings.length <= 1) {
+        alert('Cada carro precisa manter pelo menos 1 financiamento.');
+        return;
+      }
+      car.financings = car.financings.filter(f => f.id !== fin.id);
+      if (car.activeFinancingId === fin.id) {
+        car.activeFinancingId = car.financings[0].id;
+      }
+      renderAll();
+    });
+
+    card.querySelector('[data-action="select-fin"]').addEventListener('click', () => {
+      car.activeFinancingId = fin.id;
+      renderAll();
+    });
+
+    return card;
+  }
+
+  function renderAll() {
+    const oldContainer = $('old_cars_container');
+    oldContainer.innerHTML = '';
+    oldCars.forEach(car => oldContainer.appendChild(renderOldCar(car)));
+
+    const container = $('cars_container');
+    container.innerHTML = '';
+    cars.forEach(car => container.appendChild(renderCar(car)));
+    recalcular();
+  }
+
+  // ============ RECÁLCULO ============
+  function recalcular() {
+    const H = Math.max(1, parseInt($('horizonte').value) || 60);
+    const globals = {
+      capitalInicial: parseFloat($('capital_inicial').value) || 0,
+      rendMes: (parseFloat($('rendimento_mes').value) || 0) / 100,
+      kmMes: parseFloat($('km_mes').value) || 0,
+      precoComb: parseFloat($('combustivel_preco').value) || 0,
+    };
+
+    // Atualizar dropdown de referência do aporte
+    atualizarDropdownAporte();
+
+    // Garantir que aporteRefCarId aponta para um carro existente
+    if (!cars.find(c => c.id === aporteRefCarId)) {
+      aporteRefCarId = cars[0]?.id || null;
+      if (aporteRefCarId) $('aporte_ref_car').value = aporteRefCarId;
+    }
+
+    // ==== CALCULAR DESPESAS DO CARRO ANTIGO (para saber o aporte) ====
+    // Usamos o MELHOR antigo, mas ainda não sabemos qual é — vamos decidir depois.
+    // Por enquanto, precisamos conhecer as despesas de cada antigo.
+    const oldCarBaseData = oldCars.map(oldCar => {
+      const combMes = (globals.kmMes / (oldCar.consumo || 1)) * globals.precoComb;
+      const custoMensal = oldCar.manutencao + combMes + (oldCar.seguroAnual / 12) + (oldCar.licenciamentoAnual / 12);
+      return { oldCar, custoMensal, combMes };
+    });
+
+    // Atualizar display do custo mensal em cada card antigo
+    oldCarBaseData.forEach(({ oldCar, custoMensal }) => {
+      const card = document.querySelector(`.car-card.old[data-id="${oldCar.id}"]`);
+      if (card) {
+        const outEl = card.querySelector('[data-out="total"]');
+        if (outEl) outEl.textContent = fmtBRL2(custoMensal);
+      }
+    });
+
+    // ==== CALCULAR APORTE MENSAL (baseado no carro novo de referência) ====
+    const refCar = cars.find(c => c.id === aporteRefCarId) || cars[0];
+    let aportePorMes = new Array(H + 1).fill(0);
+    let aporteMedioStr = '—';
+    let aporteExplain = 'Adicione um carro novo para calcular o aporte.';
+
+    if (refCar && oldCarBaseData.length > 0) {
+      // Gastos mensais do carro novo de referência (parcela + operacional)
+      const refActiveFin = refCar.financings.find(f => f.id === refCar.activeFinancingId) || refCar.financings[0];
+      const refFinanciado = Math.max(0, refCar.valor - refCar.entrada);
+      const { taxaEfetiva: refTaxaEf } = resolverTaxaEfetiva(refFinanciado, refActiveFin.juros / 100, refActiveFin.prazo, refActiveFin.parcelaReal);
+      const refSim = simularFinanciamento(refFinanciado, refTaxaEf, refActiveFin.prazo, refActiveFin.amortType, refActiveFin.extraAmort, refActiveFin.extraMode);
+      const refParcelaPorMes = new Array(H + 1).fill(0);
+      for (const m of refSim.meses) {
+        if (m.mes <= H) refParcelaPorMes[m.mes] = m.total;
+      }
+      const refCombMes = (globals.kmMes / (refCar.consumo || 1)) * globals.precoComb;
+      const refIpvaMes = (refCar.valor * (refCar.ipvaPerc / 100)) / 12;
+      const refSeguroMes = (refCar.valor * (refCar.seguroPerc / 100)) / 12;
+      const refRevisaoMes = refCar.revisao / 12;
+      const refOperacionalMes = refCombMes + refIpvaMes + refSeguroMes + refRevisaoMes;
+
+      // Despesas do MELHOR antigo — vamos usar a média dos antigos por simplicidade.
+      // Na prática, quando o melhor antigo for escolhido depois, a diferença é pequena entre antigos.
+      // Estratégia: usar o custo do antigo com menor custo (mais conservador pro aporte).
+      const menorCustoAntigo = Math.min(...oldCarBaseData.map(d => d.custoMensal));
+
+      let somaAportes = 0;
+      let mesesComAporte = 0;
+      for (let m = 1; m <= H; m++) {
+        const gastosNovo = (refParcelaPorMes[m] || 0) + refOperacionalMes;
+        const gastosAntigo = menorCustoAntigo;
+        const aporte = Math.max(0, gastosNovo - gastosAntigo);
+        aportePorMes[m] = aporte;
+        if (aporte > 0) {
+          somaAportes += aporte;
+          mesesComAporte++;
+        }
+      }
+
+      const aporteMedio = mesesComAporte > 0 ? somaAportes / mesesComAporte : 0;
+      aporteMedioStr = fmtBRL2(aporteMedio);
+
+      // Mensagem explicativa
+      const prazoFin = refSim.prazoEfetivo;
+      const parcelaMed = refSim.parcelaMedia;
+      const gastosAntigoStr = fmtBRL2(menorCustoAntigo);
+      aporteExplain = `Enquanto o financiamento do <strong>${escapeHTML(refCar.name)}</strong> estiver ativo (primeiros ${prazoFin} meses), o aporte médio será de <strong>${fmtBRL2(aporteMedio)}/mês</strong> — a diferença entre os gastos desse carro novo (parcela ${fmtBRL(parcelaMed)} + operacional ${fmtBRL(refOperacionalMes)}) e o antigo mais barato (${gastosAntigoStr}). Depois que o financiamento quita, resta só a diferença operacional.`;
+    }
+
+    $('aporte_valor_out').textContent = aporteMedioStr;
+    $('aporte_explain').innerHTML = aporteExplain;
+
+    // ==== SIMULAR CADA CARRO ANTIGO COM APORTE ====
+    const oldCarResults = oldCarBaseData.map(({ oldCar, custoMensal }) => {
+      const historico = simularPatrimonioAntigo(globals, oldCar, H, aportePorMes);
+      return {
+        oldCar,
+        historico,
+        custoMensal,
+        finalPatrimonio: historico[historico.length - 1].patrimonio
+      };
+    });
+
+    // Escolher o melhor carro antigo (maior patrimônio ao fim do horizonte)
+    const bestOld = oldCarResults.length > 0
+      ? oldCarResults.reduce((a, b) => a.finalPatrimonio >= b.finalPatrimonio ? a : b)
+      : null;
+
+    const histAntigo = bestOld ? bestOld.historico : [{ mes: 0, caixa: globals.capitalInicial, patrimonio: globals.capitalInicial, gastoAcum: 0, aporteAcum: 0 }];
+    const vendaAntigoParaNovo = bestOld ? bestOld.oldCar.vendaAtual : 0;
+
+    // ==== SIMULAR CADA CARRO NOVO ====
+    const carResults = cars.map(car => {
+      const activeFin = car.financings.find(f => f.id === car.activeFinancingId) || car.financings[0];
+      const result = simularPatrimonioCarroNovo(globals, car, activeFin, H, vendaAntigoParaNovo);
+
+      // Atualizar métricas de CADA financiamento do carro
+      car.financings.forEach(fin => {
+        const financiado = Math.max(0, car.valor - car.entrada);
+        const resolved = resolverTaxaEfetiva(financiado, fin.juros / 100, fin.prazo, fin.parcelaReal);
+        const taxaEf = resolved.taxaEfetiva;
+        const simF = simularFinanciamento(financiado, taxaEf, fin.prazo, fin.amortType, fin.extraAmort, fin.extraMode);
+        const simFSem = simularFinanciamento(financiado, taxaEf, fin.prazo, fin.amortType, 0, fin.extraMode);
+        const economiaJuros = simFSem.totalJuros - simF.totalJuros;
+        const mesesEconomizados = simFSem.prazoEfetivo - simF.prazoEfetivo;
+
+        const finCard = document.querySelector(`.car-card[data-id="${car.id}"] .fin-card[data-id="${fin.id}"]`);
+        if (finCard) {
+          const metricsEl = finCard.querySelector('[data-metrics]');
+          const parcelaLabel = fin.amortType === 'price' ? 'Parcela' : 'Parc. média';
+          const fonteTag = resolved.fonte === 'manual'
+            ? `<span style="background:#c99a2a; color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:2px; letter-spacing:0.08em;">MANUAL</span>`
+            : `<span style="background:var(--ink-mute); color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:2px; letter-spacing:0.08em;" title="Calculada com margem CET de ${(CET_PADRAO*100).toFixed(0)}% sobre juros nominais">AUTO +${(CET_PADRAO*100).toFixed(0)}%</span>`;
+          metricsEl.innerHTML = `
+            <div class="metric">
+              <div class="metric-label">${parcelaLabel} ${fonteTag}</div>
+              <div class="metric-value highlight">${fmtBRL(simF.parcelaMedia)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Prazo ef.</div>
+              <div class="metric-value">${simF.prazoEfetivo}m</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Total pago</div>
+              <div class="metric-value">${fmtBRL(simF.totalPago)}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Juros + custos</div>
+              <div class="metric-value">${fmtBRL(simF.totalJuros)}</div>
+            </div>
+            <div class="metric" style="grid-column:1/-1; padding-top:6px; border-top:1px dashed var(--line); font-size:0.7rem; color:var(--ink-mute);">
+              Taxa efetiva (CET): ${(taxaEf * 100).toFixed(2)}% a.m.${resolved.fonte === 'auto' ? ` <em>(${fin.juros}% nominal + margem)</em>` : ''}
+            </div>
+            ${fin.extraAmort > 0 ? `
+              <div class="metric" style="grid-column:1/-1; padding-top:6px; border-top:1px dashed var(--line);">
+                <div class="metric-label">Amort. extra poupa</div>
+                <div class="metric-value" style="color:#2d5f4a; font-size:0.75rem;">
+                  ${fmtBRL(economiaJuros)}${mesesEconomizados > 0 ? ` · ${mesesEconomizados}m antes` : ''}
+                </div>
+              </div>
+            ` : ''}
+          `;
+        }
+      });
+
+      return {
+        car,
+        activeFin,
+        historico: result.historico,
+        finalPatrimonio: result.historico[result.historico.length - 1].patrimonio,
+        simFin: result.simFin
+      };
+    });
+
+    // Renderizar gráfico
+    renderChart(globals, H, histAntigo, carResults, bestOld);
+    renderLegendAndRanking(globals, H, histAntigo, carResults, bestOld);
+  }
+
+  // Atualiza o <select> de carro de referência para o aporte
+  function atualizarDropdownAporte() {
+    const sel = $('aporte_ref_car');
+    if (!sel) return;
+
+    // Preservar valor atual se ainda existir
+    const prevValue = aporteRefCarId || sel.value;
+
+    sel.innerHTML = cars.map(c =>
+      `<option value="${c.id}">${escapeHTML(c.name)}</option>`
+    ).join('') || '<option value="">(nenhum carro novo)</option>';
+
+    if (cars.find(c => c.id === prevValue)) {
+      sel.value = prevValue;
+      aporteRefCarId = prevValue;
+    } else if (cars.length > 0) {
+      sel.value = cars[0].id;
+      aporteRefCarId = cars[0].id;
+    } else {
+      aporteRefCarId = null;
+    }
+  }
+
+  // ============ GRÁFICO ============
+  let chartData = null; // cache para tooltip
+
+  function renderChart(globals, H, histAntigo, carResults, bestOld) {
+    const svg = $('chart_svg');
+    const W = 900, Ht = 500;
+    const padL = 70, padR = 20, padT = 20, padB = 50;
+    const plotW = W - padL - padR;
+    const plotH = Ht - padT - padB;
+
+    const antigoLabel = bestOld ? `Manter ${bestOld.oldCar.name}` : 'Manter antigo';
+
+    // Calcular escalas
+    const allSeries = [
+      { name: antigoLabel, color: ANTIGO_COLOR, data: histAntigo, isAntigo: true },
+      ...carResults.map(r => ({
+        name: r.car.name,
+        color: r.car.color,
+        data: r.historico,
+        isAntigo: false,
+        car: r.car,
+        activeFin: r.activeFin
+      }))
+    ];
+
+    const allValues = allSeries.flatMap(s => s.data.map(d => d.patrimonio));
+    const maxY = Math.max(...allValues) * 1.05;
+    const minY = Math.min(...allValues, 0) * (Math.min(...allValues) < 0 ? 1.05 : 0.95);
+
+    const xScale = mes => padL + (mes / H) * plotW;
+    const yScale = val => padT + plotH - ((val - minY) / (maxY - minY)) * plotH;
+
+    // SVG content
+    let html = '';
+
+    // Grid horizontal
+    const nGrid = 5;
+    for (let i = 0; i <= nGrid; i++) {
+      const v = minY + (maxY - minY) * (i / nGrid);
+      const y = yScale(v);
+      html += `<line class="chart-grid-line" x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}"/>`;
+      html += `<text class="chart-axis-label" x="${padL - 8}" y="${y + 4}" text-anchor="end">${fmtBRL(v)}</text>`;
+    }
+
+    // Eixo X labels
+    const nX = Math.min(6, H);
+    for (let i = 0; i <= nX; i++) {
+      const mes = Math.round((H * i) / nX);
+      const x = xScale(mes);
+      html += `<line class="chart-grid-line" x1="${x}" y1="${padT}" x2="${x}" y2="${padT + plotH}" stroke-dasharray="2,3"/>`;
+      html += `<text class="chart-axis-label" x="${x}" y="${padT + plotH + 20}" text-anchor="middle">${mes}m</text>`;
+    }
+
+    // Axes
+    html += `<line class="chart-axis-line" x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + plotH}"/>`;
+    html += `<line class="chart-axis-line" x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}"/>`;
+
+    // Linha zero se relevante
+    if (minY < 0) {
+      const y0 = yScale(0);
+      html += `<line x1="${padL}" y1="${y0}" x2="${W - padR}" y2="${y0}" stroke="#aaa" stroke-width="1" stroke-dasharray="4,4"/>`;
+    }
+
+    // Linhas dos cenários
+    allSeries.forEach((s, idx) => {
+      const points = s.data.map(d => `${xScale(d.mes)},${yScale(d.patrimonio)}`).join(' ');
+      html += `<polyline class="chart-line" points="${points}" stroke="${s.color}" data-series="${idx}"/>`;
+
+      // Último ponto destacado
+      const last = s.data[s.data.length - 1];
+      html += `<circle class="chart-dot" cx="${xScale(last.mes)}" cy="${yScale(last.patrimonio)}" r="5" stroke="${s.color}"/>`;
+    });
+
+    // Labels X e Y
+    html += `<text class="chart-axis-label" x="${W / 2}" y="${Ht - 8}" text-anchor="middle" style="font-size:11px;">Meses</text>`;
+    html += `<text class="chart-axis-label" x="15" y="${padT + plotH / 2}" text-anchor="middle" transform="rotate(-90 15 ${padT + plotH / 2})" style="font-size:11px;">Patrimônio (R$)</text>`;
+
+    // Overlay invisível para tooltip
+    html += `<rect id="chart_overlay" x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" fill="transparent" style="cursor:crosshair;"/>`;
+
+    svg.innerHTML = html;
+
+    chartData = { globals, H, padL, padR, padT, padB, plotW, plotH, xScale, yScale, allSeries };
+
+    // Tooltip interaction
+    const overlay = svg.querySelector('#chart_overlay');
+    const tooltip = $('chart_tooltip');
+
+    overlay.addEventListener('mousemove', e => {
+      const rect = svg.getBoundingClientRect();
+      // A svg usa viewBox 900x500, mas no DOM pode estar redimensionada
+      const scaleX = rect.width / W;
+      const scaleY = rect.height / Ht;
+      const svgX = (e.clientX - rect.left) / scaleX;
+      const mes = Math.round(((svgX - padL) / plotW) * H);
+      if (mes < 0 || mes > H) {
+        tooltip.classList.remove('show');
+        return;
+      }
+
+      const tooltipRows = allSeries.map(s => {
+        const pt = s.data[Math.min(mes, s.data.length - 1)];
+        return `<div class="tt-row">
+          <span><span class="dot" style="background:${s.color}"></span>${escapeHTML(s.name)}</span>
+          <strong>${fmtBRL(pt.patrimonio)}</strong>
+        </div>`;
+      }).join('');
+
+      tooltip.innerHTML = `<div class="tt-title">Mês ${mes}</div>${tooltipRows}`;
+      tooltip.classList.add('show');
+
+      // posicionar
+      const chartWrapRect = svg.parentElement.getBoundingClientRect();
+      let tx = e.clientX - chartWrapRect.left + 14;
+      let ty = e.clientY - chartWrapRect.top - 10;
+      if (tx + 220 > chartWrapRect.width) tx = e.clientX - chartWrapRect.left - 230;
+      if (ty + 200 > chartWrapRect.height) ty = chartWrapRect.height - 210;
+      if (ty < 0) ty = 10;
+      tooltip.style.left = tx + 'px';
+      tooltip.style.top = ty + 'px';
+
+      // Linha vertical do hover
+      const existing = svg.querySelector('.hover-line');
+      if (existing) existing.remove();
+      const hoverX = xScale(mes);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('class', 'hover-line');
+      line.setAttribute('x1', hoverX); line.setAttribute('x2', hoverX);
+      line.setAttribute('y1', padT); line.setAttribute('y2', padT + plotH);
+      line.setAttribute('stroke', '#000'); line.setAttribute('stroke-width', '1');
+      line.setAttribute('stroke-dasharray', '3,3'); line.setAttribute('opacity', '0.4');
+      svg.appendChild(line);
+    });
+
+    overlay.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('show');
+      const existing = svg.querySelector('.hover-line');
+      if (existing) existing.remove();
+    });
+  }
+
+  function renderLegendAndRanking(globals, H, histAntigo, carResults, bestOld) {
+    const antigoLabel = bestOld ? `Manter ${bestOld.oldCar.name}` : 'Manter antigo';
+    const antigoExtra = bestOld && oldCars.length > 1
+      ? `melhor entre ${oldCars.length} antigos`
+      : 'sem compra de carro';
+
+    // Legenda
+    const legendEl = $('chart_legend');
+    const items = [
+      { name: antigoLabel, color: ANTIGO_COLOR, extra: antigoExtra },
+      ...carResults.map(r => ({
+        name: r.car.name,
+        color: r.car.color,
+        extra: r.activeFin?.name || ''
+      }))
+    ];
+    legendEl.innerHTML = items.map(it => `
+      <div class="legend-item">
+        <span class="legend-line" style="background:${it.color}"></span>
+        <span><strong>${escapeHTML(it.name)}</strong> ${it.extra ? `<span style="color:var(--ink-mute);">· ${escapeHTML(it.extra)}</span>` : ''}</span>
+      </div>
+    `).join('');
+
+    // Ranking
+    const antigoFinal = histAntigo[histAntigo.length - 1].patrimonio;
+    const ranking = [
+      { name: antigoLabel, color: ANTIGO_COLOR, patrimonio: antigoFinal, detail: antigoExtra, isAntigo: true },
+      ...carResults.map(r => ({
+        name: r.car.name,
+        color: r.car.color,
+        patrimonio: r.historico[r.historico.length - 1].patrimonio,
+        detail: `${r.activeFin.name} · ${r.activeFin.amortType === 'price' ? 'Price' : 'SAC'} · ${fmtBRL(r.simFin.parcelaMedia)}/mês`,
+        isAntigo: false
+      }))
+    ].sort((a, b) => b.patrimonio - a.patrimonio);
+
+    const tableEl = $('ranking_table');
+    tableEl.innerHTML = `
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Cenário</th>
+          <th>Detalhes</th>
+          <th>Patrimônio em ${H}m</th>
+          <th>vs manter antigo</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${ranking.map((r, i) => {
+          const posClass = i === 0 ? 'p1' : i === 1 ? 'p2' : i === 2 ? 'p3' : '';
+          const delta = r.patrimonio - antigoFinal;
+          const deltaClass = delta > 0 ? 'delta-pos' : delta < 0 ? 'delta-neg' : '';
+          const deltaStr = r.isAntigo ? '—' : `${delta >= 0 ? '+' : ''}${fmtBRL(delta)}`;
+          return `
+            <tr>
+              <td class="pos ${posClass}">${i + 1}º</td>
+              <td>
+                <span class="car-dot" style="background:${r.color}"></span>
+                ${escapeHTML(r.name)}
+              </td>
+              <td style="font-size:0.78rem; color:var(--ink-mute);">${escapeHTML(r.detail)}</td>
+              <td style="font-weight:700;">${fmtBRL(r.patrimonio)}</td>
+              <td class="${deltaClass}">${deltaStr}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    `;
+  }
+
+  // ============ INIT ============
+  oldCars.push(createOldCar({ name: 'Meu carro de 1993' }));
+
+  cars.push(createCar({ name: 'Honda HR-V', color: CAR_COLORS[0] }));
+  cars.push(createCar({ name: 'Toyota Corolla', color: CAR_COLORS[1], valor: 120000, entrada: 40000 }));
+
+  $('add_old_car').addEventListener('click', () => {
+    oldCars.push(createOldCar({}));
+    renderAll();
+  });
+
+  $('add_car').addEventListener('click', () => {
+    cars.push(createCar({}));
+    renderAll();
+  });
+
+  ['horizonte', 'capital_inicial', 'rendimento_mes',
+   'km_mes', 'combustivel_preco']
+    .forEach(id => $(id).addEventListener('input', recalcular));
+
+  $('aporte_ref_car').addEventListener('change', e => {
+    aporteRefCarId = e.target.value;
+    recalcular();
+  });
+
+  document.querySelectorAll('.quick-pick').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.quick-pick').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      $('horizonte').value = btn.dataset.h;
+      recalcular();
+    });
+  });
+
+  $('horizonte').addEventListener('input', () => {
+    const v = parseInt($('horizonte').value);
+    document.querySelectorAll('.quick-pick').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.h) === v);
+    });
+  });
+
+  renderAll();
+})();
+</script>
+
+</body>
+</html>
