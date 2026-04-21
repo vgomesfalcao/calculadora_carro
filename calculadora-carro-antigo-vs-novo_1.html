@@ -2562,11 +2562,11 @@
   }
 
   // ============ INIT ============
+  normalizeNumericInputs(document);
+
   if (!loadState()) {
     seedDefaultState();
   }
-
-  normalizeNumericInputs(document);
 
   $('add_old_car').addEventListener('click', () => {
     oldCars.push(createOldCar({}));
