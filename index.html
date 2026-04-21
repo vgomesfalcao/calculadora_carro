@@ -1145,6 +1145,7 @@
   ];
 
   const ANTIGO_COLOR = '#b8562a';
+  const ANO_ATUAL = new Date().getFullYear();
   const CET_PADRAO = 0.10; // 10% adicional sobre Price puro para refletir IOF + tarifas + seguros típicos
   const STORAGE_KEY = 'calculadora-carro-state-v1';
   const EMBEDDED_STATE_ID = 'embedded_state';
@@ -1261,6 +1262,31 @@
       : readNumericValue(inputOrValue);
   }
 
+  function isCarroUsado(car) {
+    return (readIntegerValue(car?.ano) || ANO_ATUAL) < ANO_ATUAL;
+  }
+
+  function getCarCuidadoCopy(car) {
+    return isCarroUsado(car)
+      ? {
+          label: 'Manutenção',
+          help: 'Para carro usado, preencha por mês ou por ano.'
+        }
+      : {
+          label: 'Revisões',
+          help: 'Para carro novo, preencha por mês ou por ano.'
+        };
+  }
+
+  function updateCarCuidadoCopy(card, car) {
+    if (!card) return;
+    const copy = getCarCuidadoCopy(car);
+    const labelEl = card.querySelector('[data-cuidado-label]');
+    const helpEl = card.querySelector('[data-cuidado-help]');
+    if (labelEl) labelEl.textContent = copy.label;
+    if (helpEl) helpEl.textContent = copy.help;
+  }
+
   function inferInputDecimals(input) {
     if (isIntegerInput(input)) return 0;
     const step = input?.getAttribute?.('step');
@@ -1269,26 +1295,28 @@
     return step.split('.')[1].length;
   }
 
-  function formatInputValue(value, decimals = 2) {
+  function formatInputValue(value, decimals = 2, useGrouping = true) {
     return roundTo(value, decimals).toLocaleString('pt-BR', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
+      useGrouping,
     });
   }
 
   function formatNumericInput(input) {
     if (!input) return;
+    const useGrouping = input.dataset.noGrouping !== 'true';
     const raw = String(input.value ?? '').trim();
     if (!raw) {
       if (input.hasAttribute('placeholder')) {
         input.value = '';
         return;
       }
-      input.value = formatInputValue(0, inferInputDecimals(input));
+      input.value = formatInputValue(0, inferInputDecimals(input), useGrouping);
       return;
     }
     const value = isIntegerInput(input) ? readIntegerValue(raw) : readNumericValue(raw);
-    input.value = formatInputValue(value, inferInputDecimals(input));
+    input.value = formatInputValue(value, inferInputDecimals(input), useGrouping);
   }
 
   function normalizeNumericInputs(root = document) {
@@ -1563,6 +1591,7 @@
       id,
       name: preset.name || `Carro ${cars.length + 1}`,
       color,
+      ano: ANO_ATUAL,
       valor: 90000,
       entrada: 30000,
       ipvaPerc: 4,
@@ -1722,8 +1751,8 @@
     const combMes = (globals.kmMes / carro.consumo) * globals.precoComb;
     const ipvaMes = (carro.valor * (carro.ipvaPerc / 100)) / 12;
     const seguroMes = (carro.valor * (carro.seguroPerc / 100)) / 12;
-    const revisaoMes = carro.revisao / 12;
-    const operacionalMes = combMes + ipvaMes + seguroMes + revisaoMes;
+    const cuidadoMes = carro.revisao / 12;
+    const operacionalMes = combMes + ipvaMes + seguroMes + cuidadoMes;
 
     const rend = globals.rendMes;
     const historico = [];
@@ -1888,6 +1917,7 @@
     card.className = 'car-card';
     card.style.setProperty('--car-color', car.color);
     card.dataset.id = car.id;
+    const cuidadoCopy = getCarCuidadoCopy(car);
 
     card.innerHTML = `
       <div class="car-header">
@@ -1904,6 +1934,14 @@
             <div class="input-wrap">
               <span class="prefix">R$</span>
               <input type="number" data-field="valor" value="${car.valor}" min="0" step="0.01">
+            </div>
+          </div>
+          <div class="field">
+            <label>Ano do carro
+              <small>Use o ano para comparar novo, seminovo ou usado</small>
+            </label>
+            <div class="input-wrap">
+              <input type="number" data-field="ano" value="${car.ano}" min="1950" max="${ANO_ATUAL}" step="1" data-integer="true" data-no-grouping="true">
             </div>
           </div>
           <div class="field">
@@ -1957,8 +1995,8 @@
             </div>
           </div>
           <div class="field paired-field">
-            <label>Revisões
-              <small>Preencha por mês ou por ano.</small>
+            <label><span data-cuidado-label>${cuidadoCopy.label}</span>
+              <small data-cuidado-help>${cuidadoCopy.help}</small>
             </label>
             <div class="paired-inputs">
               <div class="paired-slot">
@@ -2005,6 +2043,9 @@
           if (field === 'color') {
             card.style.setProperty('--car-color', car.color);
           }
+        } else if (field === 'ano') {
+          car.ano = Math.max(1950, Math.min(ANO_ATUAL, readIntegerValue(e.target) || ANO_ATUAL));
+          updateCarCuidadoCopy(card, car);
         } else if (field === 'seguroPerc') {
           car.seguroPerc = readNumericValue(e.target);
           if (seguroPercMesInput) seguroPercMesInput.value = formatInputValue(annualToMonthlyLinear(car.seguroPerc), 2);
@@ -2221,8 +2262,8 @@
       const refCombMes = (globals.kmMes / (refCar.consumo || 1)) * globals.precoComb;
       const refIpvaMes = (refCar.valor * (refCar.ipvaPerc / 100)) / 12;
       const refSeguroMes = (refCar.valor * (refCar.seguroPerc / 100)) / 12;
-      const refRevisaoMes = refCar.revisao / 12;
-      const refOperacionalMes = refCombMes + refIpvaMes + refSeguroMes + refRevisaoMes;
+      const refCuidadoMes = refCar.revisao / 12;
+      const refOperacionalMes = refCombMes + refIpvaMes + refSeguroMes + refCuidadoMes;
 
       // Despesas do MELHOR antigo — vamos usar a média dos antigos por simplicidade.
       // Na prática, quando o melhor antigo for escolhido depois, a diferença é pequena entre antigos.
