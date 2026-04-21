@@ -202,6 +202,22 @@
   .field label { font-size: 0.9rem; color: var(--ink-soft); }
   .field label small { display: block; font-size: 0.72rem; color: var(--ink-mute); margin-top: 2px; }
 
+  .field-boolean {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.88rem;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .field-boolean input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent-old);
+    cursor: pointer;
+  }
+
   .paired-inputs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1266,15 +1282,25 @@
     return (readIntegerValue(car?.ano) || ANO_ATUAL) < ANO_ATUAL;
   }
 
+  function isCarroEmGarantia(car) {
+    if (typeof car?.emGarantia === 'boolean') return car.emGarantia;
+    return !isCarroUsado(car);
+  }
+
   function getCarCuidadoCopy(car) {
-    return isCarroUsado(car)
+    return isCarroEmGarantia(car)
+      ? {
+          label: 'Revisões',
+          help: 'Se o carro ainda está na garantia, use revisões por mês ou por ano.'
+        }
+      : isCarroUsado(car)
       ? {
           label: 'Manutenção',
-          help: 'Para carro usado, preencha por mês ou por ano.'
+          help: 'Fora da garantia, preencha manutenção por mês ou por ano.'
         }
       : {
-          label: 'Revisões',
-          help: 'Para carro novo, preencha por mês ou por ano.'
+          label: 'Manutenção',
+          help: 'Se o carro não estiver mais na garantia, preencha manutenção por mês ou por ano.'
         };
   }
 
@@ -1592,6 +1618,7 @@
       name: preset.name || `Carro ${cars.length + 1}`,
       color,
       ano: ANO_ATUAL,
+      emGarantia: true,
       valor: 90000,
       entrada: 30000,
       ipvaPerc: 4,
@@ -1607,6 +1634,9 @@
       const fin2 = createFinancing({ name: 'Banco B', juros: 1.25, prazo: 60 });
       car.financings = [fin1, fin2];
       car.activeFinancingId = fin1.id;
+    }
+    if (typeof car.emGarantia !== 'boolean') {
+      car.emGarantia = !isCarroUsado(car);
     }
     return car;
   }
@@ -1945,6 +1975,15 @@
             </div>
           </div>
           <div class="field">
+            <label>Garantia
+              <small>Seminovo e usado também podem continuar cobertos</small>
+            </label>
+            <label class="field-boolean">
+              <input type="checkbox" data-field="emGarantia" ${isCarroEmGarantia(car) ? 'checked' : ''}>
+              <span>Ainda está na garantia</span>
+            </label>
+          </div>
+          <div class="field">
             <label>Entrada
               <small>Sai do caixa</small>
             </label>
@@ -2043,6 +2082,9 @@
           if (field === 'color') {
             card.style.setProperty('--car-color', car.color);
           }
+        } else if (field === 'emGarantia') {
+          car.emGarantia = e.target.checked;
+          updateCarCuidadoCopy(card, car);
         } else if (field === 'ano') {
           car.ano = Math.max(1950, Math.min(ANO_ATUAL, readIntegerValue(e.target) || ANO_ATUAL));
           updateCarCuidadoCopy(card, car);
