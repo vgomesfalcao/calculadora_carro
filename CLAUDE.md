@@ -1,89 +1,110 @@
 # CLAUDE.md
 
-This file provides guidance for working in this repository.
+<!-- Maintainer note: keep this file concise and project-wide. If it grows past ~200 lines or starts collecting path-specific rules, move those rules into .claude/rules/ or a nested CLAUDE.md. -->
 
-## Project shape
+## Purpose
 
-Static web app with no build step, package manager, or automated test suite.
+This file contains project-wide instructions for Claude Code.
 
-Current file layout:
+Only keep information here that should apply in every session:
 
-- [index.html](index.html) is the document shell and main DOM structure.
-- [css/styles.css](css/styles.css) contains the app styles.
-- [js/app.js](js/app.js) contains the application logic.
+- project structure
+- core workflows
+- stable architecture rules
+- non-negotiable product and domain conventions
 
-Preserve the existing domain conventions: UI copy in pt-BR, currency in BRL, and financial inputs using Brazilian monthly-rate notation.
+Do not use this file for temporary task notes or personal preferences. Put personal, uncommitted preferences in `CLAUDE.local.md`.
 
-## Run and verify
+## Project snapshot
 
-- Run by opening [index.html](index.html) directly in a browser, or use a simple local server if needed for manual validation.
-- After UI or calculation changes, manually verify at minimum:
-	- global inputs update results
-	- adding/removing old cars works
-	- adding/removing new cars works
-	- adding/removing financings works
-	- switching the active financing updates the visible metrics
-	- toggling Price vs SAC behaves correctly
-	- horizon changes refresh the chart and summary
-- Persistence is local: state is restored from localStorage, with support for embedded state through the `embedded_state` script tag when present.
+This repository is a static web app with no build step, package manager, or automated test suite.
 
-## Architecture
+- [index.html](index.html): document shell and main DOM structure
+- [css/styles.css](css/styles.css): app styles
+- [js/app.js](js/app.js): app logic
 
-The app is imperative and DOM-driven. The main flow is:
+Keep UI copy in pt-BR, money in BRL, and financial rates in Brazilian monthly-rate notation.
 
-- `renderAll()` rebuilds the dynamic card sections from `oldCars` and `cars`, then calls `recalcular()`.
-- `recalcular()` reads global and per-card values from the DOM, runs the financial simulations, updates the chart and ranking, and persists state.
+## Working agreement
+
+- Prefer minimal edits that preserve the current architecture and visual language.
+- Do not introduce frameworks, bundlers, npm, or new dependencies unless explicitly requested.
+- Treat this as a DOM-driven app, not as a componentized framework app.
+- When markup changes, update the corresponding selectors, bindings, and DOM reads in the same edit.
+- Any user-provided string rendered with `innerHTML` must still pass through `escapeHTML()`.
+- For numeric inputs, prefer `parseLocaleNumber`, `formatNumericInput`, `normalizeNumericInputs`, `readNumericValue`, and `readIntegerValue` over raw parsing from `.value`.
+
+## Core architecture
+
+The main execution flow is:
+
+- `renderAll()` rebuilds dynamic card sections from `oldCars` and `cars`, then calls `recalcular()`.
+- `recalcular()` reads globals and per-card values from the DOM, runs simulations, updates chart and ranking output, and persists state.
 
 State model:
 
-- `cars`: new-car scenarios. Each item has `financings: []` and `activeFinancingId`.
-- `oldCars`: keep-the-current-car scenarios.
-- Globals such as `horizonte`, `capital_inicial`, `rendimento_mes`, `km_mes`, `combustivel_preco`, and `aporte_mensal` are read directly from the DOM rather than mirrored into a separate central object.
-- Persistence uses `localStorage['calculadora-carro-state-v1']`.
+- `cars`: new-car scenarios, each with `financings: []` and `activeFinancingId`
+- `oldCars`: keep-the-current-car scenarios
+- globals are read directly from DOM ids instead of a central in-memory state object
+- persistence key: `localStorage['calculadora-carro-state-v1']`
 
-Important rendering rule:
+Critical rule:
 
-- `renderAll()` rebuilds parts of the DOM. If you change markup in render functions, reattach listeners in the same render path instead of assuming existing nodes persist.
+- `renderAll()` rebuilds DOM sections. If markup is regenerated, listeners must be reattached in the same render path.
 
-## Financial model guardrails
+## Financial guardrails
 
-Keep current model assumptions unless the user explicitly asks to change the business logic.
+Preserve existing business behavior unless the request explicitly changes the model.
 
-- Automatic financing uses nominal monthly interest plus the default CET margin to infer an effective rate when `parcelaReal` is empty.
-- Negative cash is intentionally treated as non-yielding balance, not compounding debt.
-- The comparison picks the best old car by final patrimony, while the aporte reference uses the cheapest old-car monthly cost as the conservative baseline.
-- Price and SAC simulations, effective-rate inference, and patrimony/depreciation simulators should stay behaviorally consistent unless a requested change explicitly targets them.
+- Automatic financing uses nominal monthly interest plus the default CET margin when `parcelaReal` is empty.
+- Negative cash is intentionally non-yielding and must not be treated as debt compounding.
+- The comparison uses the best old-car scenario by final patrimony.
+- The aporte reference uses the cheapest old-car monthly cost as the conservative baseline.
+- Price, SAC, effective-rate inference, and patrimony/depreciation behavior should remain consistent unless directly targeted.
 
-## Editing conventions
+## UI guardrails
 
-- Keep changes minimal and consistent with the current split architecture.
-- Do not introduce frameworks, bundlers, npm, or extra dependencies unless explicitly requested.
-- Follow the existing structure: small helper functions, local state arrays (`cars`, `oldCars`), and imperative rendering through `renderAll()` and `recalcular()`.
-- Treat `data-field`, `data-action`, element ids, and query selectors as coupled to the logic. If markup changes, update the corresponding read/bind code in the same edit.
-- Any user-provided text inserted via `innerHTML` must continue to go through `escapeHTML()`.
-- For numeric inputs, prefer the existing locale-aware helpers such as `parseLocaleNumber`, `formatNumericInput`, `normalizeNumericInputs`, `readNumericValue`, and `readIntegerValue` instead of raw `parseFloat` on `.value`.
+Reuse the existing design primitives before creating section-specific CSS.
 
-## UI and visual language
+- `.field`: single row with label left and input right
+- `.field.paired-field`, `.paired-inputs`, `.paired-slot`, `.paired-slot-label`: linked monthly/annual rows
+- `.input-wrap`: numeric input wrapper with optional `.prefix` and `.suffix`
+- `.section-label`: monospace subheader for grouped fields
+- `.car-body-grid` and `.globals-grid`: two-column grids that collapse on narrow screens
 
-The app has a shared visual language. Reuse the existing primitives before inventing section-specific styles. The car-card fields are the reference implementation for form rows.
+Avoid these anti-patterns:
 
-Core primitives:
+- per-field `width: calc(...)` fixes
+- `margin-left: auto` hacks for alignment
+- overriding `.field` to stack labels above inputs across a section
+- ad hoc breakpoints when existing breakpoints around 1120, 980-900, 720, and 560 px already cover the layout
 
-- `.field`: label on the left, input on the right, for single-input rows.
-- `.field.paired-field` with `.paired-inputs`, `.paired-slot`, and `.paired-slot-label`: for linked monthly/annual pairs.
-- `.input-wrap`: wraps numeric inputs, optionally with `.prefix` and `.suffix`.
-- `.section-label`: small monospace header that groups fields within a column.
-- `.car-body-grid` and `.globals-grid`: two-column body grids that collapse on narrower viewports.
+If a section looks wrong, first realign it with shared primitives instead of adding one-off CSS.
 
-Avoid these layout anti-patterns:
+## Run and verify
 
-- Do not patch alignment with per-field `width: calc(...)`, `margin-left: auto`, or section-specific hacks when the shared primitives should be used instead.
-- Do not override `.field` to stack label and input vertically across a section. If a wider input column is needed, use `grid-template-columns: 1fr minmax(Xpx, Ypx)` while keeping the label-left/input-right axis.
-- Keep the dashed field separators and suppress the trailing one with `:last-child { border-bottom: none; }` where needed.
-- Stick to the existing responsive breakpoints around 1120, 980-900, 720, and 560 px rather than introducing new ones casually.
+Run by opening [index.html](index.html) directly in a browser, or by using a simple local server for manual checks.
 
-## Change scope
+After UI or calculation changes, manually verify at minimum:
 
-- Prefer minimal edits that preserve the current visual language and architecture.
-- If a section looks off, first realign it to the shared primitives instead of creating one-off CSS.
-- Keep documentation in this file only; do not reintroduce a separate AGENTS.md.
+- global inputs update results
+- adding and removing old cars works
+- adding and removing new cars works
+- adding and removing financings works
+- switching the active financing updates visible metrics
+- toggling Price vs SAC behaves correctly
+- changing the horizon refreshes chart and summary
+
+Persistence behavior:
+
+- restore from localStorage
+- support embedded state through the `embedded_state` script tag when present
+
+## Maintaining this file
+
+Keep this file short, specific, and repo-wide.
+
+- If guidance only applies to one directory or file type, move it to `.claude/rules/` or a nested `CLAUDE.md`.
+- If guidance is personal and should not be committed, use `CLAUDE.local.md`.
+- If the same correction happens repeatedly and applies across sessions, add it here.
+- Do not reintroduce `AGENTS.md`; this repository uses `CLAUDE.md` as the shared instruction file.
