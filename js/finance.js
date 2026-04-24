@@ -242,6 +242,7 @@ function simularPatrimonioCarroNovo(globals, carro, financing, horizonte, vendaA
 
   for (let m = 1; m <= horizonte; m++) {
     if (caixa > 0) caixa = caixa * (1 + rend);
+    caixa += (globals.aporteMensal || 0);
     const parcela = parcelaPorMes[m] || 0;
     const gastoMes = parcela + operacionalMes;
     caixa -= gastoMes;
@@ -270,6 +271,7 @@ function simularPatrimonioCarroVista(globals, carro, horizonte, vendaAntigo) {
   let gastoAcum = carro.valor;
   for (let m = 1; m <= horizonte; m++) {
     if (caixa > 0) caixa = caixa * (1 + rend);
+    caixa += (globals.aporteMensal || 0);
     caixa -= operacionalMes;
     gastoAcum += operacionalMes;
     valorCarro = valorCarroNoMes(carro.valor, m);
