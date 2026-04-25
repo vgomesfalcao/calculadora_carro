@@ -144,14 +144,21 @@ function valorAntigoNoMes(valorVendaAtual, mes) {
   return Math.max(valorVendaAtual * 0.5, valorVendaAtual * fatorMes);
 }
 
-function calcularPrazoCompraVista(valorAlvo, capitalInicial, aporteMensal, rendimentoMensal) {
+function calcularPrazoCompraVista(valorAlvo, capitalInicial, aporteMensal, rendimentoMensal, oldCar = null, globals = null) {
   const objetivo = Math.max(0, valorAlvo || 0);
   let saldo = Math.max(0, capitalInicial || 0);
   const aporte = Math.max(0, aporteMensal || 0);
   const rend = Math.max(0, rendimentoMensal || 0);
+  const oldCarSaleNow = Math.max(0, oldCar?.vendaAtual || 0);
 
-  if (saldo >= objetivo) {
-    return { meses: 0, saldoFinal: saldo, atingiu: true };
+  let oldCarOperationalMes = 0;
+  if (oldCar && globals) {
+    const combMes = ((globals.kmMes || 0) / Math.max(oldCar.consumo || 1, 1)) * (globals.precoComb || 0);
+    oldCarOperationalMes = (oldCar.manutencao || 0) + combMes + ((oldCar.seguroAnual || 0) / 12) + ((oldCar.licenciamentoAnual || 0) / 12);
+  }
+
+  if (saldo + oldCarSaleNow >= objetivo) {
+    return { meses: 0, saldoFinal: saldo + oldCarSaleNow, atingiu: true };
   }
 
   if (objetivo <= 0) {
@@ -166,8 +173,10 @@ function calcularPrazoCompraVista(valorAlvo, capitalInicial, aporteMensal, rendi
   for (let mes = 1; mes <= LIMITE_MESES; mes++) {
     if (saldo > 0) saldo *= (1 + rend);
     saldo += aporte;
-    if (saldo >= objetivo) {
-      return { meses: mes, saldoFinal: saldo, atingiu: true };
+    saldo -= oldCarOperationalMes;
+    const oldCarSaleValue = oldCar ? valorAntigoNoMes(oldCar.vendaAtual, mes) : 0;
+    if (saldo + oldCarSaleValue >= objetivo) {
+      return { meses: mes, saldoFinal: saldo + oldCarSaleValue, atingiu: true };
     }
   }
 
@@ -253,30 +262,66 @@ function simularPatrimonioCarroNovo(globals, carro, financing, horizonte, vendaA
   return { historico, simFin };
 }
 
-function simularPatrimonioCarroVista(globals, carro, horizonte, vendaAntigo) {
-  const caixaInicial = globals.capitalInicial + (vendaAntigo || 0) - carro.valor;
-  const combMes = (globals.kmMes / carro.consumo) * globals.precoComb;
-  const ipvaMes = (carro.valor * (carro.ipvaPerc / 100)) / 12;
-  const seguroMes = (carro.valor * (carro.seguroPerc / 100)) / 12;
-  const cuidadoMes = carro.revisao / 12;
-  const operacionalMes = combMes + ipvaMes + seguroMes + cuidadoMes;
-
+function simularPatrimonioCarroVista(globals, carro, horizonte, oldCar) {
+  const aporteMensal = globals.aporteMensal || 0;
   const rend = globals.rendMes;
   const historico = [];
+  const oldCarSaleNow = Math.max(0, oldCar?.vendaAtual || 0);
 
-  let caixa = caixaInicial;
-  let valorCarro = carro.valor;
-  historico.push({ mes: 0, caixa, patrimonio: caixa + valorCarro, gastoAcum: carro.valor });
+  const combMesNovo = (globals.kmMes / carro.consumo) * globals.precoComb;
+  const ipvaMesNovo = (carro.valor * (carro.ipvaPerc / 100)) / 12;
+  const seguroMesNovo = (carro.valor * (carro.seguroPerc / 100)) / 12;
+  const cuidadoMesNovo = carro.revisao / 12;
+  const operacionalMesNovo = combMesNovo + ipvaMesNovo + seguroMesNovo + cuidadoMesNovo;
 
-  let gastoAcum = carro.valor;
-  for (let m = 1; m <= horizonte; m++) {
-    if (caixa > 0) caixa = caixa * (1 + rend);
-    caixa += (globals.aporteMensal || 0);
-    caixa -= operacionalMes;
-    gastoAcum += operacionalMes;
-    valorCarro = valorCarroNoMes(carro.valor, m);
-    historico.push({ mes: m, caixa, patrimonio: caixa + valorCarro, gastoAcum });
+  const combMesAntigo = oldCar ? (globals.kmMes / (oldCar.consumo || 1)) * globals.precoComb : 0;
+  const operacionalMesAntigo = oldCar
+    ? oldCar.manutencao + combMesAntigo + (oldCar.seguroAnual / 12) + (oldCar.licenciamentoAnual / 12)
+    : 0;
+
+  let caixa = globals.capitalInicial;
+  let gastoAcum = 0;
+  let comprou = false;
+  let mesCompra = null;
+
+  if (caixa + oldCarSaleNow >= carro.valor) {
+    comprou = true;
+    mesCompra = 0;
+    caixa = caixa + oldCarSaleNow - carro.valor;
+    gastoAcum = carro.valor;
+    historico.push({ mes: 0, caixa, patrimonio: caixa + carro.valor, gastoAcum, comprou, mesCompra });
+  } else {
+    historico.push({ mes: 0, caixa, patrimonio: caixa + oldCarSaleNow, gastoAcum, comprou, mesCompra });
   }
 
-  return { historico };
+  for (let m = 1; m <= horizonte; m++) {
+    if (caixa > 0) caixa = caixa * (1 + rend);
+    caixa += aporteMensal;
+
+    if (!comprou) {
+      caixa -= operacionalMesAntigo;
+      gastoAcum += operacionalMesAntigo;
+
+      const valorAntigo = oldCar ? valorAntigoNoMes(oldCar.vendaAtual, m) : 0;
+      if (caixa + valorAntigo >= carro.valor) {
+        comprou = true;
+        mesCompra = m;
+        caixa = caixa + valorAntigo - carro.valor;
+        gastoAcum += carro.valor;
+        historico.push({ mes: m, caixa, patrimonio: caixa + carro.valor, gastoAcum, comprou, mesCompra });
+        continue;
+      }
+
+      historico.push({ mes: m, caixa, patrimonio: caixa + valorAntigo, gastoAcum, comprou, mesCompra });
+      continue;
+    }
+
+    caixa -= operacionalMesNovo;
+    gastoAcum += operacionalMesNovo;
+    const mesesComNovo = Math.max(0, m - mesCompra);
+    const valorCarro = valorCarroNoMes(carro.valor, mesesComNovo);
+    historico.push({ mes: m, caixa, patrimonio: caixa + valorCarro, gastoAcum, comprou, mesCompra });
+  }
+
+  return { historico, comprou, mesCompra };
 }

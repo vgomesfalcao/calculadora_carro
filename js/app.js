@@ -46,32 +46,69 @@
     return { historico, simFin };
   }
 
-  function simularPatrimonioCarroVista(globals, carro, horizonte, vendaAntigo) {
-    const caixaInicial = globals.capitalInicial + (vendaAntigo || 0) - carro.valor;
-    const combMes = (globals.kmMes / carro.consumo) * globals.precoComb;
-    const ipvaMes = (carro.valor * (carro.ipvaPerc / 100)) / 12;
-    const seguroMes = (carro.valor * (carro.seguroPerc / 100)) / 12;
-    const cuidadoMes = carro.revisao / 12;
-    const operacionalMes = combMes + ipvaMes + seguroMes + cuidadoMes;
-
+  function simularPatrimonioCarroVista(globals, carro, horizonte, oldCar) {
+    const aporteMensal = globals.aporteMensal || 0;
     const rend = globals.rendMes;
     const historico = [];
+    const oldCarSaleNow = Math.max(0, oldCar?.vendaAtual || 0);
 
-    let caixa = caixaInicial;
-    let valorCarro = carro.valor;
-    historico.push({ mes: 0, caixa, patrimonio: caixa + valorCarro, gastoAcum: carro.valor });
+    const combMesNovo = (globals.kmMes / carro.consumo) * globals.precoComb;
+    const ipvaMesNovo = (carro.valor * (carro.ipvaPerc / 100)) / 12;
+    const seguroMesNovo = (carro.valor * (carro.seguroPerc / 100)) / 12;
+    const cuidadoMesNovo = carro.revisao / 12;
+    const operacionalMesNovo = combMesNovo + ipvaMesNovo + seguroMesNovo + cuidadoMesNovo;
 
-    let gastoAcum = carro.valor;
-    for (let m = 1; m <= horizonte; m++) {
-      if (caixa > 0) caixa = caixa * (1 + rend);
-      caixa += (globals.aporteMensal || 0);
-      caixa -= operacionalMes;
-      gastoAcum += operacionalMes;
-      valorCarro = valorCarroNoMes(carro.valor, m);
-      historico.push({ mes: m, caixa, patrimonio: caixa + valorCarro, gastoAcum });
+    const combMesAntigo = oldCar ? (globals.kmMes / (oldCar.consumo || 1)) * globals.precoComb : 0;
+    const operacionalMesAntigo = oldCar
+      ? oldCar.manutencao + combMesAntigo + (oldCar.seguroAnual / 12) + (oldCar.licenciamentoAnual / 12)
+      : 0;
+
+    let caixa = globals.capitalInicial;
+    let gastoAcum = 0;
+    let comprou = false;
+    let mesCompra = null;
+
+    if (caixa + oldCarSaleNow >= carro.valor) {
+      comprou = true;
+      mesCompra = 0;
+      caixa = caixa + oldCarSaleNow - carro.valor;
+      gastoAcum = carro.valor;
+      historico.push({ mes: 0, caixa, patrimonio: caixa + carro.valor, gastoAcum, comprou, mesCompra });
+    } else {
+      const patrimonioInicial = caixa + oldCarSaleNow;
+      historico.push({ mes: 0, caixa, patrimonio: patrimonioInicial, gastoAcum, comprou, mesCompra });
     }
 
-    return { historico };
+    for (let m = 1; m <= horizonte; m++) {
+      if (caixa > 0) caixa = caixa * (1 + rend);
+      caixa += aporteMensal;
+
+      if (!comprou) {
+        caixa -= operacionalMesAntigo;
+        gastoAcum += operacionalMesAntigo;
+
+        const valorAntigo = oldCar ? valorAntigoNoMes(oldCar.vendaAtual, m) : 0;
+        if (caixa + valorAntigo >= carro.valor) {
+          comprou = true;
+          mesCompra = m;
+          caixa = caixa + valorAntigo - carro.valor;
+          gastoAcum += carro.valor;
+          historico.push({ mes: m, caixa, patrimonio: caixa + carro.valor, gastoAcum, comprou, mesCompra });
+          continue;
+        }
+
+        historico.push({ mes: m, caixa, patrimonio: caixa + valorAntigo, gastoAcum, comprou, mesCompra });
+        continue;
+      }
+
+      caixa -= operacionalMesNovo;
+      gastoAcum += operacionalMesNovo;
+      const mesesComNovo = Math.max(0, m - mesCompra);
+      const valorCarro = valorCarroNoMes(carro.valor, mesesComNovo);
+      historico.push({ mes: m, caixa, patrimonio: caixa + valorCarro, gastoAcum, comprou, mesCompra });
+    }
+
+    return { historico, comprou, mesCompra };
   }
 
   // ============ UI: OLD CAR CARD ============
@@ -593,25 +630,6 @@
       }
     });
 
-    cars.forEach(car => {
-      const card = document.querySelector(`.car-card[data-id="${car.id}"]`);
-      const cashTimeEl = card?.querySelector('[data-out="cash-buy-time"]');
-      if (!cashTimeEl) return;
-
-      const prazoVista = calcularPrazoCompraVista(
-        car.valor,
-        globals.capitalInicial,
-        globals.aporteMensal,
-        globals.rendMes
-      );
-
-      if (prazoVista.atingiu) {
-        cashTimeEl.textContent = `Compra estimada em ${formatarPrazoMeses(prazoVista.meses)} com saldo de ${fmtBRL2(prazoVista.saldoFinal)}.`;
-      } else {
-        cashTimeEl.textContent = 'Com os parâmetros atuais, o valor do carro não é atingido em prazo razoável.';
-      }
-    });
-
     const aportePorMes = new Array(H + 1).fill(globals.aporteMensal);
     aportePorMes[0] = 0;
     const aporteMedioStr = fmtBRL2(globals.aporteMensal);
@@ -640,6 +658,27 @@
 
     const histAntigo = bestOld ? bestOld.historico : [{ mes: 0, caixa: globals.capitalInicial, patrimonio: globals.capitalInicial, gastoAcum: 0, aporteAcum: 0 }];
     const vendaAntigoParaNovo = bestOld ? bestOld.oldCar.vendaAtual : 0;
+
+    cars.forEach(car => {
+      const card = document.querySelector(`.car-card[data-id="${car.id}"]`);
+      const cashTimeEl = card?.querySelector('[data-out="cash-buy-time"]');
+      if (!cashTimeEl) return;
+
+      const prazoVista = calcularPrazoCompraVista(
+        car.valor,
+        globals.capitalInicial,
+        globals.aporteMensal,
+        globals.rendMes,
+        bestOld?.oldCar || null,
+        globals
+      );
+
+      if (prazoVista.atingiu) {
+        cashTimeEl.textContent = `Compra estimada em ${formatarPrazoMeses(prazoVista.meses)} com saldo de ${fmtBRL2(prazoVista.saldoFinal)}.`;
+      } else {
+        cashTimeEl.textContent = 'Com os parâmetros atuais, o valor do carro não é atingido em prazo razoável.';
+      }
+    });
 
     // ==== SIMULAR CADA CARRO NOVO ====
     const carResults = cars.map(car => {
@@ -732,7 +771,12 @@
       }
 
       if (car.showCashPurchaseInChart) {
-        const vistaResult = simularPatrimonioCarroVista(globals, car, H, vendaAntigoParaNovo);
+        const vistaResult = simularPatrimonioCarroVista(globals, car, H, bestOld?.oldCar || null);
+        const detalheVista = vistaResult.comprou
+          ? (vistaResult.mesCompra === 0
+              ? `Compra à vista agora · ${fmtBRL(car.valor)}`
+              : `Compra à vista em ${formatarPrazoMeses(vistaResult.mesCompra)} · ${fmtBRL(car.valor)}`)
+          : `Compra à vista não viável no horizonte · ${fmtBRL(car.valor)}`;
         chartScenarios.push({
           type: 'cash',
           name: `${car.name} · À vista`,
@@ -740,7 +784,7 @@
           dashArray: '3 4',
           historico: vistaResult.historico,
           finalPatrimonio: vistaResult.historico[vistaResult.historico.length - 1].patrimonio,
-          detail: `Compra à vista · ${fmtBRL(car.valor)}`,
+          detail: detalheVista,
           finName: 'À vista'
         });
       }
