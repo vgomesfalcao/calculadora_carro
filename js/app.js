@@ -33,7 +33,9 @@
     for (let m = 1; m <= horizonte; m++) {
       // 1) Rendimento sobre caixa positivo
       if (caixa > 0) caixa = caixa * (1 + rend);
-      // 2) Debitar parcela do financiamento + operacional
+      // 2) Aporte mensal entra no caixa (durante financiamento é compensado pela parcela; após quitação, vira investimento)
+      caixa += (globals.aporteMensal || 0);
+      // 3) Debitar parcela do financiamento + operacional
       const parcela = parcelaPorMes[m] || 0;
       const gastoMes = parcela + operacionalMes;
       caixa -= gastoMes;
@@ -62,6 +64,7 @@
     let gastoAcum = carro.valor;
     for (let m = 1; m <= horizonte; m++) {
       if (caixa > 0) caixa = caixa * (1 + rend);
+      caixa += (globals.aporteMensal || 0);
       caixa -= operacionalMes;
       gastoAcum += operacionalMes;
       valorCarro = valorCarroNoMes(carro.valor, m);
